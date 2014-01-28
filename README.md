@@ -24,7 +24,7 @@ The samples folder includes a sample topology and sample bolt, using the number 
 
 ## Using the Sample
 
-1. Edit the *.properties file to configure your Storm topology, Kinesis Stream, and ZooKeeper details. For your AWS Credentials, we receommend using IAM roles on EC2 when possible. You can also specify your credentials using system properties, environment variables, or AwsCredentials.properties.
+1. Edit the *.properties file to configure your Storm topology, Kinesis Stream, and ZooKeeper details. For your AWS Credentials, we recommend using IAM roles on EC2 when possible. You can also specify your credentials using system properties, environment variables, or AwsCredentials.properties.
 2. Package the spout and the sample (including all dependencies but excluding Storm itself) into one JAR file.
 3. Deploy the package to Storm via the JAR file, e.g., `storm jar my-spout-sample.jar SampleTopology sample.properties RemoteMode` 
 
