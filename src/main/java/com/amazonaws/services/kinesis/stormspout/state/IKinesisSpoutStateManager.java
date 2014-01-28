@@ -1,0 +1,130 @@
+/*
+ * Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Amazon Software License (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ * http://aws.amazon.com/asl/
+ *
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+package com.amazonaws.services.kinesis.stormspout.state;
+
+import com.amazonaws.services.kinesis.stormspout.IShardGetter;
+
+/**
+ * State manager for storing Kinesis specific state.
+ *
+ * A class implementing IKinesisSpoutStateManager is in charge of handling the assignment of
+ * getters, as well as handling shard state.
+ *
+ * An implementation may or may not be backed by a persistent store, and can optionally
+ * handle retrying failed records.
+ */
+public interface IKinesisSpoutStateManager {
+
+    /**
+     * Activate the state manager. This should be called before other calls.
+     */
+    void activate();
+
+    /**
+     * Check if the task handles any getters (e.g. responsible for shards).
+     * 
+     * @return true if the task handles at least one getter.
+     */
+    boolean hasGetters();
+
+    /**
+     * Get the next getter for the spout task to read from.
+     * Should only be called if hasGetters() returned true.
+     * 
+     * @return a shard getter.
+     */
+    IShardGetter getNextGetter();
+
+    /**
+     * Inform the state of a spout rebalance by Storm. This will cause the state to re-assign its
+     * getters to match its new task index and the new number of tasks.
+     * 
+     * @param taskIndex New task index (assigned by Storm).
+     * @param totalNumTasks New total number of tasks (assigned by Storm).
+     */
+    void rebalance(int taskIndex, int totalNumTasks);
+
+    /**
+     * Mark a record as acknowledged by the topology. It will not be retried.
+     * Implementations that don't support retries, should silently return
+     * 
+     * @param shardId Shard containing the acknowledged record.
+     * @param seqNum Sequence number uniquely identifying the record.
+     */
+    void ack(String shardId, String seqNum);
+
+    /**
+     * Mark a record as failed by the topology. If implemented, this operation should trigger a
+     * retry.
+     * 
+     * Implementations that don't support retries, should silently return.
+     * 
+     * @param shardId Shard containing the failed record.
+     * @param seqNum Sequence number uniquely identifying the record.
+     */
+    void fail(String shardId, String seqNum);
+
+    /**
+     * Mark a record as emitted into the topology.
+     * 
+     * Implementations that don't support emit should silently return.
+     * 
+     * @param shardId Shard containing the emitted record.
+     * @param seqNum Sequence number uniquely identifying the record.
+     */
+    void emit(String shardId, String seqNum);
+
+    /**
+     * Checks whether there is a record pending retry in a shard.
+     * 
+     * Implementations that don't support retries should return false.
+     * 
+     * @param shardId Shard containing the record to retry.
+     * @return true if there is a record to retry.
+     */
+    boolean shouldRetry(String shardId);
+
+    /**
+     * Sequence number of record to retry.
+     * This should be called only if shouldRetry returned true.
+     * 
+     * @param shardId Shard to get record to retry from.
+     * @return sequence number of record to retry.
+     */
+    String retry(String shardId);
+
+    /**
+     * Return the sequence number of the last emitted record.
+     * 
+     * @param shardId Shard to get last emitted record from.
+     * @return Return the sequence number of the record that was last emitted by emit(shardId). Empty string if emit
+     *         was not called.
+     */
+    String getLastEmitted(String shardId);
+
+    /**
+     * Commit shard states into the persistent backing store of the implementation.
+     */
+    void commitShardStates();
+
+    /**
+     * Can be used to close the connection to the persistent store of the implementation.
+     * 
+     * @throws Exception if the close failed.
+     */
+    void deactivate() throws Exception;
+
+}
