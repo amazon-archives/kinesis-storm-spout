@@ -1,6 +1,6 @@
 # Amazon Kinesis Storm Spout
 
-The **Amazon Kinesis Storm Spout** helps Java developers integrate [Amazon Kinesis][aws-kinesis] with [Storm](http://storm-project.net/).
+The **Amazon Kinesis Storm spout** helps Java developers integrate [Amazon Kinesis][aws-kinesis] with [Storm](http://storm-project.net/).
 
 ## Requirements
 
@@ -12,19 +12,19 @@ The **Amazon Kinesis Storm Spout** helps Java developers integrate [Amazon Kines
 
 ## Overview
 
-The Kinesis Storm spout fetches data records from Amazon Kinesis and emits them as tuples. The spout stores state in [ZooKeeper](http://zookeeper.apache.org/) to track the current position in the stream.
+The Amazon Kinesis Storm spout fetches data records from Amazon Kinesis and emits them as tuples. The spout stores state in [ZooKeeper](http://zookeeper.apache.org/) to track the current position in the stream.
 
 To use the spout, you'll need to add it to your Storm topology. 
 
-+ **KinesisSpout**: Constructs an instance of the spout, using your AWS credentials and the configuration specified in KinesisSpoutConfig (as well as com.amazonaws.ClientConfiguration, via the AWS SDK). Each task executed by the spout operates on a distinct set of Kinesis shards. Shard states are periodically committed to ZooKeeper. When the spout is deactivated, it will disconnect from ZooKeeper, but the spout will continue monitoring its local state so you can activate it again later.
-+ **KinesisSpoutConfig**: Configures the spout, including the Storm topology name, the Kinesis stream name, the endpoint for connecting to ZooKeeper and the prefix for the ZooKeeper paths where the spout state is stored. See the samples folder for configuration examples.
++ **KinesisSpout**: Constructs an instance of the spout, using your AWS credentials and the configuration specified in KinesisSpoutConfig (as well as com.amazonaws.ClientConfiguration, via the AWS SDK). Each task executed by the spout operates on a distinct set of Amazon Kinesis shards. Shard states are periodically committed to ZooKeeper. When the spout is deactivated, it will disconnect from ZooKeeper, but the spout will continue monitoring its local state so you can activate it again later.
++ **KinesisSpoutConfig**: Configures the spout, including the Storm topology name, the Amazon Kinesis stream name, the endpoint for connecting to ZooKeeper, and the prefix for the ZooKeeper paths where the spout state is stored. See the samples folder for configuration examples.
 + **DefaultKinesisRecordScheme**: This default scheme, used by the sample topology, emits a tuple of `(partitionKey, record)`. If you want to emit more structured data, you can provide your own implementation of IKinesisRecordScheme.
 
-The samples folder includes a sample topology and sample bolt, using the number of Kinesis shards as the parallelism hint for the spout. For more information about Storm topologies and bolts, see the [Storm wiki](https://github.com/nathanmarz/storm/wiki).
+The samples folder includes a sample topology and sample bolt, using the number of Amazon Kinesis shards as the parallelism hint for the spout. For more information about Storm topologies and bolts, see the [Storm wiki](https://github.com/nathanmarz/storm/wiki).
 
 ## Using the Sample
 
-1. Edit the *.properties file to configure your Storm topology, Kinesis Stream, and ZooKeeper details. For your AWS Credentials, we recommend using IAM roles on EC2 when possible. You can also specify your credentials using system properties, environment variables, or AwsCredentials.properties.
+1. Edit the *.properties file to configure your Storm topology, Amazon Kinesis stream, and ZooKeeper details. For your AWS Credentials, we recommend using IAM roles on Amazon EC2 when possible. You can also specify your credentials using system properties, environment variables, or AwsCredentials.properties.
 2. Package the spout and the sample (including all dependencies but excluding Storm itself) into one JAR file.
 3. Deploy the package to Storm via the JAR file, e.g., `storm jar my-spout-sample.jar SampleTopology sample.properties RemoteMode` 
 
