@@ -61,13 +61,14 @@ class ZookeeperShardState {
         this.config = config;
         this.rand = new Random();
 
-        try {
+/* bugfix:exception IOException is never thrown in body of corresponding try statement */
+//        try {
             zk = CuratorFrameworkFactory.newClient(config.getZookeeperConnectionString(),
                     new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_NUM_RETRIES));
-        } catch (IOException e) {
-            LOG.error("Could not connect to ZooKeeper", e);
-            throw new KinesisSpoutException(e);
-        }
+//        } catch (IOException e) {
+//            LOG.error("Could not connect to ZooKeeper", e);
+//            throw new KinesisSpoutException(e);
+//        }
         zk.start();
     }
 
