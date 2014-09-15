@@ -18,6 +18,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+import com.amazonaws.services.kinesis.stormspout.serializer.RecordSerializer;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,7 @@ public class SampleTopology {
 
         Config topoConf = new Config();
         topoConf.setFallBackOnJavaSerialization(true);
+        topoConf.registerSerialization(Record.class, RecordSerializer.class);
         topoConf.setDebug(false);
 
         if (mode.equals("LocalMode")) {
