@@ -7,56 +7,68 @@
     <groupId>com.amazonaws.services.kinesis</groupId>
     <artifactId>stormspout</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <properties>
+        <sdk.version>1.7</sdk.version>
+        <kryo.version>2.21</kryo.version>
+        <aws.version>1.6.10</aws.version>
+        <slf4j.version>1.7.7</slf4j.version>
+        <commons.version>3.0</commons.version>
+        <jackson.version>2.1.1</jackson.version>
+        <google.collections.version>1.0</google.collections.version>
+        <storm.version>0.9.3-incubating-SNAPSHOT</storm.version>
+        <curator.version>1.0.1</curator.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.esotericsoftware.kryo</groupId>
             <artifactId>kryo</artifactId>
-            <version>2.21</version>
+            <version>${kryo.version}</version>
         </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk</artifactId>
-            <version>1.6.10</version>
+            <version>${aws.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.7</version>
+            <version>${slf4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.0</version>
+            <version>${commons.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.1.1</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.1.1</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <version>2.1.1</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.collections</groupId>
             <artifactId>google-collections</artifactId>
-            <version>1.0</version>
+            <version>${google.collections.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
-            <version>0.9.3-incubating-SNAPSHOT</version>
+            <version>${storm.version}</version>
         </dependency>
         <dependency>
             <groupId>com.netflix.curator</groupId>
             <artifactId>curator-framework</artifactId>
-            <version>1.0.1</version>
+            <version>${curator.version}</version>
         </dependency>
     </dependencies>
 
@@ -67,8 +79,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>${sdk.version}</source>
+                    <target>${sdk.version}</target>
                 </configuration>
             </plugin>
         </plugins>
