@@ -31,6 +31,7 @@ import org.apache.zookeeper.Watcher.Event.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.IShardGetter;
 import com.amazonaws.services.kinesis.stormspout.IShardGetterBuilder;
 import com.amazonaws.services.kinesis.stormspout.IShardListGetter;
@@ -62,6 +63,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     private ImmutableList<IShardGetter> getters;
     private Iterator<IShardGetter> currentGetter;
     private Map<String, LocalShardState> shardStates;
+
 
     /**
      * @param config Spout configuration with ZK preferences.
@@ -199,8 +201,8 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
      *          java.lang.String, java.lang.String)
      */
     @Override
-    public void emit(final String shardId, final String seqNum) {
-        safeGetShardState(shardId).emit(seqNum);
+    public void emit(final String shardId, final Record record, boolean isRetry) {
+        safeGetShardState(shardId).emit(record, isRetry);
     }
 
     /* (non-Javadoc)
@@ -210,22 +212,13 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     public boolean shouldRetry(final String shardId) {
         return safeGetShardState(shardId).shouldRetry();
     }
-
+    
     /* (non-Javadoc)
-     * @see com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager#retry(java.lang.String)
+     * @see com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager#recordToRetry(java.lang.String)
      */
     @Override
-    public String retry(final String shardId) {
-        return safeGetShardState(shardId).retry();
-    }
-
-    /* (non-Javadoc)
-     * @see com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager#getLastEmitted(
-     *         java.lang.String)
-     */
-    @Override
-    public String getLastEmitted(final String shardId) {
-        return safeGetShardState(shardId).getLastEmitted();
+    public Record recordToRetry(final String shardId) {
+        return safeGetShardState(shardId).recordToRetry();
     }
 
     // Will commit the checkpoint from the local shard states to ZK if the ZK
@@ -249,8 +242,9 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
 
             if (st.isDirty()) {
                 try {
-                    zk.commitSeqNum(shardId, st.getLatestValidSeqNum());
-                    st.commit();
+                    String checkpointSequenceNumber = st.getLatestValidSeqNum();
+                    zk.commitSeqNum(shardId, checkpointSequenceNumber);
+                    st.commit(checkpointSequenceNumber);
                     LOG.info(this + "Advanced checkpoint for " + shardId + " to " + st.getLatestValidSeqNum());
                 } catch (Exception e) {
                     String message = this + " could not commit ZK state for shardId=" + shardId + "."
@@ -336,7 +330,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
                           + " from ZooKeeper. Starting from default getter position.");
                 latestValidSeqNum = "";
             }
-            state.put(shardId, new LocalShardState(shardId, latestValidSeqNum));
+            state.put(shardId, new LocalShardState(shardId, latestValidSeqNum, config.getRecordRetryLimit()));
         }
 
         return state;

@@ -31,6 +31,9 @@ import com.google.common.collect.ImmutableList;
 class BufferedGetter implements IShardGetter {
     private final IShardGetter getter;
     private final int maxBufferSize;
+    private final long emptyRecordListBackoffTime;
+    private long nextRebufferTime = 0L;
+    private final TimeProvider timeProvider;
 
     private Records buffer;
     private Iterator<Record> it;
@@ -39,11 +42,29 @@ class BufferedGetter implements IShardGetter {
      * Creates a (shard) getter that buffers records.
      * 
      * @param underlyingGetter Unbuffered shard getter.
-     * @param maxBufferSize max number of records to fetch from the underlying getter.
+     * @param maxBufferSize Max number of records to fetch from the underlying getter.
+     * @param emptyRecordListBackoffMillis Backoff time between GetRecords calls if previous call fetched no records.
      */
-    public BufferedGetter(final IShardGetter underlyingGetter, final int maxBufferSize) {
+    public BufferedGetter(final IShardGetter underlyingGetter, final int maxBufferSize, final long emptyRecordListBackoffMillis) {
+        this(underlyingGetter, maxBufferSize, emptyRecordListBackoffMillis, new TimeProvider());
+    }
+    
+    /**
+     * Used for unit testing.
+     * 
+     * @param underlyingGetter Unbuffered shard getter
+     * @param maxBufferSize Max number of records to fetch from the underlying getter
+     * @param emptyRecordListBackoffMillis Backoff time between GetRecords calls if previous call fetched no records.
+     * @param timeProvider Useful for testing timing based behavior (e.g. backoff)
+     */
+    BufferedGetter(final IShardGetter underlyingGetter,
+            final int maxBufferSize,
+            final long emptyRecordListBackoffMillis,
+            final TimeProvider timeProvider) {
         this.getter = underlyingGetter;
         this.maxBufferSize = maxBufferSize;
+        this.emptyRecordListBackoffTime = emptyRecordListBackoffMillis;
+        this.timeProvider = timeProvider;
     }
 
     @Override
@@ -102,7 +123,23 @@ class BufferedGetter implements IShardGetter {
 
     // Post : buffer != null && it != null
     private void rebuffer() {
-        buffer = getter.getNext(maxBufferSize);
-        it = buffer.getRecords().iterator();
+        if ((buffer == null) || (it == null) || (timeProvider.getCurrentTimeMillis() >= nextRebufferTime)) {
+            buffer = getter.getNext(maxBufferSize);
+            it = buffer.getRecords().iterator();
+            // Backoff if we get an empty record list
+            if (buffer.isEmpty()) {
+                nextRebufferTime = timeProvider.getCurrentTimeMillis() + emptyRecordListBackoffTime;
+            }
+        }
+    }
+    
+    /** 
+     * Time provider - helpful for unit tests of BufferedGetter.
+     */
+    static class TimeProvider {
+
+        long getCurrentTimeMillis() {
+            return System.currentTimeMillis();
+        }
     }
 }

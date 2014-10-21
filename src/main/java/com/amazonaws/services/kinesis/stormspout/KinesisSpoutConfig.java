@@ -17,6 +17,9 @@ package com.amazonaws.services.kinesis.stormspout;
 
 import java.io.Serializable;
 
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+
 /**
  * Kinesis Spout configuration.
  */
@@ -27,6 +30,10 @@ public class KinesisSpoutConfig implements Serializable {
     private int maxRecordsPerCall = 10000;
     private InitialPositionInStream initialPositionInStream = InitialPositionInStream.LATEST;
     private int checkpointIntervalMillis = 60000;
+    // Backoff time between Kinesis GetRecords API calls (per shard) when a call returns an empty list of records.
+    private long emptyRecordListBackoffMillis = 500L;
+    private int recordRetryLimit = 3;
+    private Regions region = Regions.US_EAST_1;
 
     private final String zookeeperConnectionString;
     private String zookeeperPrefix = "kinesis_storm_spout";
@@ -78,6 +85,18 @@ public class KinesisSpoutConfig implements Serializable {
     private void checkValueIsPositive(int argument, String argumentName) {
         if (argument <= 0) {
             throw new IllegalArgumentException("Value of " + argumentName + " must be positive, but was " + argument);
+        }
+    }
+
+    private void checkValueIsNotNegative(int argument, String argumentName) {
+        if (argument < 0) {
+            throw new IllegalArgumentException("Value of " + argumentName + " must be >= 0, but was " + argument);
+        }
+    }
+    
+    private void checkValueIsNotNull(Object object, String argumentName) {
+        if (object == null) {
+            throw new IllegalArgumentException(argumentName + " should not be null");
         }
     }
 
@@ -205,6 +224,54 @@ public class KinesisSpoutConfig implements Serializable {
     public KinesisSpoutConfig withMaxRecordsPerCall(int maxRecordsPerCall) {
         checkValueIsPositive(maxRecordsPerCall, "maxRecordsPerCall");
         this.maxRecordsPerCall = maxRecordsPerCall;
+        return this;
+    }
+
+    /**
+     * @return recordRetryLimit Max retry attempts for a record (upon failure).
+     */
+    public int getRecordRetryLimit() {
+        return recordRetryLimit;
+    }
+    
+    /**
+     * @param recordRetryLimit Max retry attempts for a record (upon failure)
+     * @return KinesisSpoutConfig
+     */
+    public KinesisSpoutConfig withRecordRetryLimit(int recordRetryLimit) {
+        checkValueIsNotNegative(recordRetryLimit, "recordRetryLimit");
+        this.recordRetryLimit = recordRetryLimit;
+        return this;
+    }
+
+    /**
+     * @return the region
+     */
+    public Region getRegion() {
+        return Region.getRegion(region);
+    }
+
+    /**
+     * @param region AWS Region
+     * @return KinesisSpoutConfig
+     */
+    public KinesisSpoutConfig withRegion(Regions region) {
+        checkValueIsNotNull(region, "region");
+        this.region = region;
+        return this;
+    }
+
+    public long getEmptyRecordListBackoffMillis() {
+        return emptyRecordListBackoffMillis ;
+    }
+    
+    /**
+     * @param emptyRecordListBackoffMillis Backoff for this time before making the next Kinesis GetRecords API call (per
+     *        shard) if the previous call returned no records.
+     * @return KinesisSpoutConfig
+     */
+    public KinesisSpoutConfig withEmptyRecordListBackoffMillis(long emptyRecordListBackoffMillis) {
+        this.emptyRecordListBackoffMillis = emptyRecordListBackoffMillis;
         return this;
     }
 }

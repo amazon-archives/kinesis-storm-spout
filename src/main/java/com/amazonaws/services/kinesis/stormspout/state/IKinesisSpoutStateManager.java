@@ -15,10 +15,11 @@
 
 package com.amazonaws.services.kinesis.stormspout.state;
 
+import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.IShardGetter;
 
 /**
- * State manager for storing Kinesis specific state.
+ * State manager for storing Amazon Kinesis Storm Spout specific state.
  *
  * A class implementing IKinesisSpoutStateManager is in charge of handling the assignment of
  * getters, as well as handling shard state.
@@ -83,9 +84,10 @@ public interface IKinesisSpoutStateManager {
      * Implementations that don't support emit should silently return.
      * 
      * @param shardId Shard containing the emitted record.
-     * @param seqNum Sequence number uniquely identifying the record.
+     * @param record Record emitted.
+     * @param isRetry Is the record a retry attempt?
      */
-    void emit(String shardId, String seqNum);
+    void emit(String shardId, Record record, boolean isRetry);
 
     /**
      * Checks whether there is a record pending retry in a shard.
@@ -96,24 +98,15 @@ public interface IKinesisSpoutStateManager {
      * @return true if there is a record to retry.
      */
     boolean shouldRetry(String shardId);
-
+    
     /**
-     * Sequence number of record to retry.
+     * Amazon Kinesis record to retry.
      * This should be called only if shouldRetry returned true.
      * 
      * @param shardId Shard to get record to retry from.
-     * @return sequence number of record to retry.
+     * @return record to retry.
      */
-    String retry(String shardId);
-
-    /**
-     * Return the sequence number of the last emitted record.
-     * 
-     * @param shardId Shard to get last emitted record from.
-     * @return Return the sequence number of the record that was last emitted by emit(shardId). Empty string if emit
-     *         was not called.
-     */
-    String getLastEmitted(String shardId);
+    Record recordToRetry(String shardId);
 
     /**
      * Commit shard states into the persistent backing store of the implementation.

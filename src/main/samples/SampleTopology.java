@@ -31,7 +31,7 @@ import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
 
 import com.amazonaws.ClientConfiguration;
-import com.amazonaws.services.kinesis.stormspout.DefaultKinesisRecordScheme;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.stormspout.InitialPositionInStream;
 import com.amazonaws.services.kinesis.stormspout.KinesisSpout;
 import com.amazonaws.services.kinesis.stormspout.KinesisSpoutConfig;
@@ -40,7 +40,9 @@ public class SampleTopology {
     private static final Logger LOG = LoggerFactory.getLogger(SampleTopology.class);
     private static String topologyName = "SampleTopology";
     private static String streamName;
-    private static InitialPositionInStream initialPositionInStream;
+    private static InitialPositionInStream initialPositionInStream = InitialPositionInStream.LATEST;
+    private static int recordRetryLimit = 3;
+    private static Regions region = Regions.US_EAST_1;
     private static String zookeeperEndpoint;
     private static String zookeeperPrefix;
 
@@ -59,7 +61,10 @@ public class SampleTopology {
 
         final KinesisSpoutConfig config =
                 new KinesisSpoutConfig(streamName, zookeeperEndpoint).withZookeeperPrefix(zookeeperPrefix)
-                        .withInitialPositionInStream(initialPositionInStream)                        ;
+                        .withKinesisRecordScheme(new SampleKinesisRecordScheme())
+                        .withInitialPositionInStream(initialPositionInStream)
+                        .withRecordRetryLimit(recordRetryLimit)
+                        .withRegion(region);
 
         final KinesisSpout spout = new KinesisSpout(config, new CustomCredentialsProviderChain(), new ClientConfiguration());
         TopologyBuilder builder = new TopologyBuilder();
@@ -67,7 +72,7 @@ public class SampleTopology {
 
         // Using number of shards as the parallelism hint for the spout.
         builder.setSpout("kinesis_spout", spout, 2);
-        builder.setBolt("print_bolt", new SampleBolt(), 2).fieldsGrouping("kinesis_spout", new Fields(DefaultKinesisRecordScheme.FIELD_PARTITION_KEY));
+        builder.setBolt("print_bolt", new SampleBolt(), 2).fieldsGrouping("kinesis_spout", new Fields(SampleKinesisRecordScheme.FIELD_PARTITION_KEY));
 
         Config topoConf = new Config();
         topoConf.setFallBackOnJavaSerialization(true);
@@ -113,6 +118,18 @@ public class SampleTopology {
              initialPositionInStream = InitialPositionInStream.valueOf(initialPositionOverride);
         }
         LOG.info("Using initial position " + initialPositionInStream.toString() + " (if a checkpoint is not found).");
+        
+        String recordRetryLimitOverride = properties.getProperty(ConfigKeys.RECORD_RETRY_LIMIT);
+        if (recordRetryLimitOverride != null) {
+            recordRetryLimit = Integer.parseInt(recordRetryLimitOverride.trim());
+        }
+        LOG.info("Using recordRetryLimit " + recordRetryLimit);
+
+        String regionOverride = properties.getProperty(ConfigKeys.REGION_KEY);
+        if (regionOverride != null) {
+            region = Regions.fromName(regionOverride);
+        }
+        LOG.info("Using region " + region.getName());
 
         String zookeeperEndpointOverride = properties.getProperty(ConfigKeys.ZOOKEEPER_ENDPOINT_KEY);
         if (zookeeperEndpointOverride != null) {
