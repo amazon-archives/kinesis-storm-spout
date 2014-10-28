@@ -29,8 +29,6 @@
         <curator-framework.version>1.1.3</curator-framework.version>
         <guava.version>13.0-final</guava.version>
         <commons-lang3.version>3.0</commons-lang3.version>
-        <jackson.version></jackson.version>
-        <google.collections.version></google.collections.version>
         <kryo.version>2.21</kryo.version>
     </properties>
     
