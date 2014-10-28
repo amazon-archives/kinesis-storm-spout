@@ -15,20 +15,13 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
-import java.util.SortedSet;
-import java.util.TreeSet;
-
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.amazonaws.services.kinesis.model.Record;
 
 /**
  * This class tracks the state of a shard (e.g. current shard position).
@@ -38,43 +31,30 @@ class LocalShardState {
 
     private final String shardId;
 
-    private String latestValidSeqNum;
-    private boolean dirty;
-
-    private List<String> emittedSeqNums;
-    private SortedSet<MutableInt> ackedSortedSet;
-
-    private Queue<String> retryQueue;
-    private String lastEmitted;
+    private InflightRecordTracker tracker;
+    private String committedSequenceNumber;
 
     /**
      * Constructor.
      * 
      * @param shardId ID of the shard this LocalShardState is tracking.
      * @param latestZookeeperSeqNum the last checkpoint stored in Zookeeper.
+     * @param recordRetryLimit Number of times a failed record should be retried.
      */
-    LocalShardState(final String shardId, final String latestZookeeperSeqNum) {
+    LocalShardState(final String shardId, final String latestZookeeperSeqNum, final int recordRetryLimit) {
         this.shardId = shardId;
-        this.latestValidSeqNum = latestZookeeperSeqNum;
-        this.dirty = false;
-        this.emittedSeqNums = new ArrayList<>();
-        this.ackedSortedSet = new TreeSet<>();
-        this.retryQueue = new LinkedList<>();
-        this.lastEmitted = "";
+        this.tracker = new InflightRecordTracker(shardId, latestZookeeperSeqNum, recordRetryLimit);
+        this.committedSequenceNumber = latestZookeeperSeqNum;
     }
 
     /**
      * Call when a record is emitted in nextTuple.
      *
-     * @param seqNum  the sequence number of the record.
+     * @param record the Kinesis record emitted.
+     * @param isRetry Is this a retry attempt of a previously emitted record.
      */
-    void emit(final String seqNum) {
-        // Add to *end* only if it is not a retry.
-        if (!emittedSeqNums.contains(seqNum)) {
-            LOG.debug(this + " adding " + seqNum + " to emitted seqnums.");
-            emittedSeqNums.add(seqNum);
-        }
-        lastEmitted = seqNum;
+    void emit(final Record record, boolean isRetry) {
+        tracker.onEmit(record, isRetry);
     }
 
     /**
@@ -84,57 +64,35 @@ class LocalShardState {
      * @param seqNum  the sequence number of the record.
      */
     void ack(final String seqNum) {
-        final MutableInt indexInEmittedList = new MutableInt(emittedSeqNums.indexOf(seqNum));
-
-        // Allow acking a record more than once (useful to handle behavior for retrying trimmed
-        // records in CommonSpout).
-        if (indexInEmittedList.intValue() == -1) {
-            LOG.debug(this + " " + seqNum + " got acked more than once."
-                     + " This could be expected, no actions taken.");
-            return;
-        }
-
-        // Mark the index of the current seqNum as acked.
-        ackedSortedSet.add(indexInEmittedList);
-
-        if (ackedSortedSet.first().intValue() == 0) {
-            LOG.debug(this + " first element of set is 0 - computing new sequence number to checkpoint.");
-            validateNewSeqNum();
-        }
+        tracker.onAck(seqNum);
     }
 
     /** 
-     * Note: At this time, we don't retry failed messages. We treat this like an ack to unblock the spout task.
      * Call when a record is failed. It is then added to a retry queue that is queried by
      * nextTuple().
      *
      * @param failedSequenceNumber  sequence number of failed record.
      */
     void fail(final String failedSequenceNumber) {
-        // Only fail if it's actually been emitted.
-        if (emittedSeqNums.indexOf(failedSequenceNumber) != -1) {
-            // Note: At this time, we don't support retry/replay of failed messages, so we treat like ack.
-            ack(failedSequenceNumber);
-            //retryQueue.add(failedSequenceNumber);
-        }
+        tracker.onFail(failedSequenceNumber);
     }
 
     /**
-     * Get a sequence number to retry.
+     * Get a record to retry.
      *
      * Pre : shouldRetry().
-     * @return a sequence number.
+     * @return a record to retry - may be null if we can't find a record to retry.
      */
-    String retry() {
+    Record recordToRetry() {
         assert shouldRetry() : "Nothing to retry.";
-        return retryQueue.remove();
+        return tracker.recordToRetry();
     }
 
     /**
      * @return true if there are sequence numbers that need to be retried.
      */
     boolean shouldRetry() {
-        return !retryQueue.isEmpty();
+        return tracker.shouldRetry();
     }
 
     /**
@@ -144,28 +102,22 @@ class LocalShardState {
      * @return a sequence number.
      */
     String getLatestValidSeqNum() {
-        return latestValidSeqNum;
+        return tracker.getCheckpointSequenceNumber();
     }
 
     /**
-     * @return the sequence number of the last emitted record.
-     */
-    String getLastEmitted() {
-        return lastEmitted;
-    }
-
-    /**
-     * @return true if the latest valid sequence number has changed (new records were processed).
+     * @return true if the checkpoint sequence number has changed (new records were processed).
      */
     boolean isDirty() {
-        return dirty;
+        return !committedSequenceNumber.equals(tracker.getCheckpointSequenceNumber());
     }
 
     /**
-     * Reset dirty flag upon saving state (checkpoint).
+     * Record the sequenced number we checkpointed.
+     * @param checkpointSequenceNumber Sequence number we used to checkpoint.
      */
-    void commit() {
-        dirty = false;
+    void commit(String checkpointSequenceNumber) {
+        this.committedSequenceNumber = checkpointSequenceNumber;
     }
 
     /**
@@ -189,50 +141,5 @@ class LocalShardState {
 
     private String detailedToString() {
         return ReflectionToStringBuilder.toString(this);
-    }
-
-    /**
-     * Updates internal data structures to reflect acked records.
-     * E.g. advance the sequence number to be used for checkpoint.
-     */
-    private void validateNewSeqNum() {
-        logMe("BEFORE computing new candidate checkpoint sequence number.");
-
-        Iterator<MutableInt> it = ackedSortedSet.iterator();
-        int lastElemOfSubSeq = it.next().intValue();
-        it.remove();
-
-        // If the first element of the set is 0, then we can move the latestValidSeqNum forward.
-        // We compute the largest subsequence of ackedSortedSet that can be validated to update
-        // latestValidSeqNum.
-        // We will also remove those elements from ackedSortedSet as they will then be considered to
-        // be validated.
-        while (it.hasNext()) {
-            if (it.next().intValue() == lastElemOfSubSeq + 1) {
-                lastElemOfSubSeq++;
-                it.remove();
-            } else {
-                break;
-            }
-        }
-
-        // We can now index into emittedSeqNums with lastElemOfSubSeq to find out which is the
-        // highest seqnum we can validate. Since they are stored in the order they arrive and
-        // we have guaranteed all previous values (with the subseq) have been acked, it is safe
-        // to do this.
-        latestValidSeqNum = emittedSeqNums.get(lastElemOfSubSeq);
-        dirty = true;
-
-        // No need to keep all values from the subseq in memory anymore, they have been validated.
-        emittedSeqNums.subList(0, lastElemOfSubSeq + 1).clear();
-
-        // Last step is to offset all elements left in the ackedSortedSet by the length of the
-        // subseq, to make sure they still point to the correct element in the (now shorter)
-        // emittedSeqNums list.
-        for (MutableInt v: ackedSortedSet) {
-            v.subtract(lastElemOfSubSeq + 1);
-        }
-
-        logMe("AFTER computing new candidate checkpoint sequence number.");
     }
 }

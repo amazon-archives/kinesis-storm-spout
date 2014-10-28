@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
@@ -39,15 +41,17 @@ class KinesisHelper implements IShardListGetter {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisHelper.class);
     private static final ShardIdComparator SHARD_ID_COMPARATOR = new ShardIdComparator();
     private static final Integer DESCRIBE_STREAM_LIMIT = 1000;
-    private static final String KINESIS_STORM_SPOUT_USER_AGENT = "kinesis-storm-spout-java-1.0.0";
+    private static final String KINESIS_STORM_SPOUT_USER_AGENT = "kinesis-storm-spout-java-1.1.0";
 
     private final byte[] serializedKinesisCredsProvider;
     private final byte[] serializedkinesisClientConfig;
+    private final byte[] serializedRegion;
     private final String streamName;
 
     private transient AWSCredentialsProvider kinesisCredsProvider;
     private transient ClientConfiguration kinesisClientConfig;
     private transient AmazonKinesisClient kinesisClient;
+    private transient Region region;
 
     /**
      * @param streamName Kinesis stream name to interact with.
@@ -56,13 +60,16 @@ class KinesisHelper implements IShardListGetter {
      */
     KinesisHelper(final String streamName,
             final AWSCredentialsProvider kinesisCredsProvider,
-            final ClientConfiguration kinesisClientConfig) {
+            final ClientConfiguration kinesisClientConfig,
+            final Region region) {
         this.streamName = streamName;
         this.serializedKinesisCredsProvider = SerializationHelper.kryoSerializeObject(kinesisCredsProvider);
         this.serializedkinesisClientConfig = SerializationHelper.kryoSerializeObject(kinesisClientConfig);
+        this.serializedRegion = SerializationHelper.kryoSerializeObject(region);
 
         this.kinesisCredsProvider = null;
         this.kinesisClientConfig = null;
+        this.region = null;
         this.kinesisClient = null;
     }
 
@@ -98,7 +105,9 @@ class KinesisHelper implements IShardListGetter {
      *         to the KinesisHelper constructor.
      */
     private AmazonKinesisClient makeNewKinesisClient() {
-        final AmazonKinesisClient client = new AmazonKinesisClient(getKinesisCredsProvider(), getClientConfiguration());
+        AmazonKinesisClient client = new AmazonKinesisClient(getKinesisCredsProvider(), getClientConfiguration());
+        LOG.info("Using " + getRegion().getName() + " region");
+        client.setRegion(getRegion());       
         return client;
     }
 
@@ -130,6 +139,13 @@ class KinesisHelper implements IShardListGetter {
         return kinesisClientConfig;
     }
 
+    private Region getRegion() {
+        if (region == null) {
+            region = (Region) SerializationHelper.kryoDeserializeObject(serializedRegion);
+        }
+        return region;
+    }
+
     private String addTruncatedShardList(final Map<String, ShardInfo> spoutShards, final List<Shard> streamShards) {
         String currShard = "";
 
@@ -139,11 +155,18 @@ class KinesisHelper implements IShardListGetter {
 
             if (s.getParentShardId() != null && s.getAdjacentParentShardId() != null) {
                 // It's a merge. Set both parents of the merge to merge into this shard.
-                spoutShards.get(s.getParentShardId()).setMergesInto(s.getShardId());
-                spoutShards.get(s.getAdjacentParentShardId()).setMergesInto(s.getShardId());
+                ShardInfo parentShardInfo = spoutShards.get(s.getParentShardId());
+                ShardInfo adjacentParentShardInfo = spoutShards.get(s.getAdjacentParentShardId());
+                if ((parentShardInfo != null) && (adjacentParentShardInfo != null)) {
+                    parentShardInfo.setMergesInto(s.getShardId());
+                    adjacentParentShardInfo.setMergesInto(s.getShardId());
+                }
             } else if (s.getParentShardId() != null) {
                 // It's a split. Add the current shard to the split list of its parent.
-                spoutShards.get(s.getParentShardId()).addSplitsInto(s.getShardId());
+                ShardInfo parentShardInfo = spoutShards.get(s.getParentShardId());
+                if (parentShardInfo != null) {
+                    parentShardInfo.addSplitsInto(s.getShardId());
+                }
             }
         }
 

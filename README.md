@@ -1,6 +1,6 @@
 # Amazon Kinesis Storm Spout
 
-The **Amazon Kinesis Storm spout** helps Java developers integrate [Amazon Kinesis][aws-kinesis] with [Storm](http://storm-project.net/).
+The **Amazon Kinesis Storm spout** helps Java developers integrate [Amazon Kinesis][aws-kinesis] with [Storm](http://storm.apache.org).
 
 ## Requirements
 
@@ -12,7 +12,9 @@ The **Amazon Kinesis Storm spout** helps Java developers integrate [Amazon Kines
 
 ## Overview
 
-The Amazon Kinesis Storm spout fetches data records from Amazon Kinesis and emits them as tuples. The spout stores state in [ZooKeeper](http://zookeeper.apache.org/) to track the current position in the stream.
+The Amazon Kinesis Storm spout fetches data records from Amazon Kinesis and emits them as tuples. The spout stores checkpoint state in [ZooKeeper](http://zookeeper.apache.org/) to track the current position in the stream.
+
+The Amazon Kinesis Storm spout can be configured to retry failed records. By default, it retries a failed record 3 times. If a record fails and the retry limit has been reached, the spout will log an error and skip over the record. The spout buffers pending records in memory, so it can re-emit a failed record without having to re-fetch the record from Amazon Kinesis. The spout sets the checkpoint to the highest sequence number that has been ack'ed (or exhausted retry attempts).
 
 To use the spout, you'll need to add it to your Storm topology. 
 
@@ -20,7 +22,7 @@ To use the spout, you'll need to add it to your Storm topology.
 + **KinesisSpoutConfig**: Configures the spout, including the Storm topology name, the Amazon Kinesis stream name, the endpoint for connecting to ZooKeeper, and the prefix for the ZooKeeper paths where the spout state is stored. See the samples folder for configuration examples.
 + **DefaultKinesisRecordScheme**: This default scheme, used by the sample topology, emits a tuple of `(partitionKey, record)`. If you want to emit more structured data, you can provide your own implementation of IKinesisRecordScheme.
 
-The samples folder includes a sample topology and sample bolt, using the number of Amazon Kinesis shards as the parallelism hint for the spout. For more information about Storm topologies and bolts, see the [Storm wiki](https://github.com/nathanmarz/storm/wiki).
+The samples folder includes a sample topology and sample bolt, using the number of Amazon Kinesis shards as the parallelism hint for the spout. For more information about Storm topologies and bolts, see the [Storm documentation](http://storm.apache.org/documentation/Home.html).
 
 ## Using the Sample
 
@@ -28,9 +30,14 @@ The samples folder includes a sample topology and sample bolt, using the number 
 2. Package the spout and the sample (including all dependencies but excluding Storm itself) into one JAR file.
 3. Deploy the package to Storm via the JAR file, e.g., `storm jar my-spout-sample.jar SampleTopology sample.properties RemoteMode` 
 
+## Release Notes
+### Release 1.1 (October 21, 2014)
++ Added support for retrying failed records
++ Added region name support
+
+
 ### Future Work
 
-+ Replay failed records
 + Handle closed, split, and merged shards 
 
 ## Related Resources

@@ -24,6 +24,7 @@ class KinesisShardGetterBuilder implements IShardGetterBuilder {
     private static final long serialVersionUID = 6038308016758172991L;
 
     private final int maxRecordsPerCall;
+    private final long emptyRecordListBackoffMillis;
 
     private final String streamName;
     private final KinesisHelper helper;
@@ -34,10 +35,14 @@ class KinesisShardGetterBuilder implements IShardGetterBuilder {
      * @param streamName Kinesis stream to create the getters in.
      * @param helper Used to get the AmazonKinesisClient object (used by the getters).
      */
-    public KinesisShardGetterBuilder(final String streamName, final KinesisHelper helper, final int maxRecordsPerCall) {
+    public KinesisShardGetterBuilder(final String streamName,
+            final KinesisHelper helper,
+            final int maxRecordsPerCall,
+            final long emptyRecordListBackoffMillis) {
         this.streamName = streamName;
         this.helper = helper;
         this.maxRecordsPerCall = maxRecordsPerCall;
+        this.emptyRecordListBackoffMillis = emptyRecordListBackoffMillis;
     }
 
     @Override
@@ -46,7 +51,8 @@ class KinesisShardGetterBuilder implements IShardGetterBuilder {
 
         for (String shard : shardAssignment) {
             builder.add(new BufferedGetter(new KinesisShardGetter(streamName, shard, helper.getSharedkinesisClient()),
-                    maxRecordsPerCall));
+                    maxRecordsPerCall,
+                    emptyRecordListBackoffMillis));
         }
 
         return builder.build();

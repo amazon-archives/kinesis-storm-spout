@@ -1,64 +1,56 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <groupId>com.amazonaws</groupId>
+    <artifactId>kinesis-storm-spout</artifactId>
+    <packaging>jar</packaging>
+    <name>Amazon Kinesis Storm Spout for Java</name>
+    <version>1.1.0</version>
+    <description> The Amazon Kinesis Storm Spout helps Java developers integrate Amazon Kinesis with Storm.</description>
+    <url>https://aws.amazon.com/kinesis</url>
 
-    <groupId>com.amazonaws.services.kinesis</groupId>
-    <artifactId>stormspout</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <scm>
+        <url>https://github.com/awslabs/kinesis-storm-spout.git</url>
+    </scm>
+
+    <licenses>
+        <license>
+            <name>Amazon Software License</name>
+            <url>https://aws.amazon.com/asl</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+
     <properties>
-        <sdk.version>1.7</sdk.version>
+        <aws-java-sdk.version>1.7.13</aws-java-sdk.version>
+        <storm.version>0.9.2-incubating</storm.version>
+        <curator-framework.version>1.1.3</curator-framework.version>
+        <guava.version>13.0-final</guava.version>
+        <commons-lang3.version>3.0</commons-lang3.version>
+        <jackson.version></jackson.version>
+        <google.collections.version></google.collections.version>
         <kryo.version>2.21</kryo.version>
-        <aws.version>1.6.10</aws.version>
-        <slf4j.version>1.7.7</slf4j.version>
-        <commons.version>3.0</commons.version>
-        <jackson.version>2.1.1</jackson.version>
-        <google.collections.version>1.0</google.collections.version>
-        <storm.version>0.9.3-incubating-SNAPSHOT</storm.version>
-        <curator.version>1.0.1</curator.version>
     </properties>
-
+    
+    
     <dependencies>
-        <dependency>
-            <groupId>com.esotericsoftware.kryo</groupId>
-            <artifactId>kryo</artifactId>
-            <version>${kryo.version}</version>
-        </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk</artifactId>
-            <version>${aws.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
+            <version>${aws-java-sdk.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>${commons.version}</version>
+            <version>${commons-lang3.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.collections</groupId>
-            <artifactId>google-collections</artifactId>
-            <version>${google.collections.version}</version>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.storm</groupId>
@@ -68,22 +60,44 @@
         <dependency>
             <groupId>com.netflix.curator</groupId>
             <artifactId>curator-framework</artifactId>
-            <version>${curator.version}</version>
+            <version>${curator-framework.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.esotericsoftware.kryo</groupId>
+            <artifactId>kryo</artifactId>
+            <version>${kryo.version}</version>
         </dependency>
     </dependencies>
 
+    <developers>
+        <developer>
+            <id>amazonwebservices</id>
+            <organization>Amazon Web Services</organization>
+            <organizationUrl>https://aws.amazon.com</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
     <build>
+      <pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.1</version>
-                <configuration>
-                    <source>${sdk.version}</source>
-                    <target>${sdk.version}</target>
-                </configuration>
-            </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+              <source>1.7</source>
+              <target>1.7</target>
+              <encoding>UTF-8</encoding>
+            </configuration>
+          </plugin>
         </plugins>
+      </pluginManagement>
+
+      <plugins>
+
+      </plugins>
     </build>
 
 </project>
