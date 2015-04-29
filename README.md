@@ -16,7 +16,7 @@ The Amazon Kinesis Storm spout fetches data records from Amazon Kinesis and emit
 
 The Amazon Kinesis Storm spout can be configured to retry failed records. By default, it retries a failed record 3 times. If a record fails and the retry limit has been reached, the spout will log an error and skip over the record. The spout buffers pending records in memory, so it can re-emit a failed record without having to re-fetch the record from Amazon Kinesis. The spout sets the checkpoint to the highest sequence number that has been ack'ed (or exhausted retry attempts).
 
-To use the spout, you'll need to add it to your Storm topology. 
+To use the spout, you'll need to add it to your Storm topology.
 
 + **KinesisSpout**: Constructs an instance of the spout, using your AWS credentials and the configuration specified in KinesisSpoutConfig (as well as com.amazonaws.ClientConfiguration, via the AWS SDK). Each task executed by the spout operates on a distinct set of Amazon Kinesis shards. Shard states are periodically committed to ZooKeeper. When the spout is deactivated, it will disconnect from ZooKeeper, but the spout will continue monitoring its local state so you can activate it again later.
 + **KinesisSpoutConfig**: Configures the spout, including the Storm topology name, the Amazon Kinesis stream name, the endpoint for connecting to ZooKeeper, and the prefix for the ZooKeeper paths where the spout state is stored. See the samples folder for configuration examples.
@@ -28,17 +28,13 @@ The samples folder includes a sample topology and sample bolt, using the number 
 
 1. Edit the *.properties file to configure your Storm topology, Amazon Kinesis stream, and ZooKeeper details. For your AWS Credentials, we recommend using IAM roles on Amazon EC2 when possible. You can also specify your credentials using system properties, environment variables, or AwsCredentials.properties.
 2. Package the spout and the sample (including all dependencies but excluding Storm itself) into one JAR file.
-3. Deploy the package to Storm via the JAR file, e.g., `storm jar my-spout-sample.jar SampleTopology sample.properties RemoteMode` 
+3. Deploy the package to Storm via the JAR file, e.g., `storm jar my-spout-sample.jar SampleTopology sample.properties RemoteMode`
 
 ## Release Notes
 ### Release 1.1 (October 21, 2014)
 + Added support for retrying failed records
 + Added region name support
 
-
-### Future Work
-
-+ Handle closed, split, and merged shards 
 
 ## Related Resources
 

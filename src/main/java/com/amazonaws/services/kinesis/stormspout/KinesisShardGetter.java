@@ -49,7 +49,7 @@ class KinesisShardGetter implements IShardGetter {
     private static final long BACKOFF_MILLIS = 500L;
 
     private final String streamName;
-    private final String shardId;
+    private final ShardInfo shard;
     private final AmazonKinesisClient kinesisClient;
 
     private String shardIterator;
@@ -57,12 +57,12 @@ class KinesisShardGetter implements IShardGetter {
 
     /**
      * @param streamName Name of the Kinesis stream
-     * @param shardId Fetch data from this shard
+     * @param shard Fetch data from this shard
      * @param kinesisClient Kinesis client to use when making requests.
      */
-    KinesisShardGetter(final String streamName, final String shardId, final AmazonKinesisClient kinesisClient) {
+    KinesisShardGetter(final String streamName, final ShardInfo shard, final AmazonKinesisClient kinesisClient) {
         this.streamName = streamName;
-        this.shardId = shardId;
+        this.shard = shard;
         this.kinesisClient = kinesisClient;
         this.shardIterator = "";
         this.positionInShard = ShardPosition.end();
@@ -72,12 +72,12 @@ class KinesisShardGetter implements IShardGetter {
     public Records getNext(int maxNumberOfRecords)
         throws AmazonClientException, ResourceNotFoundException, InvalidArgumentException {
         if (shardIterator == null) {
-            LOG.debug(this + " Null shardIterator for " + shardId + ". This can happen if shard is closed.");
+            LOG.debug(this + " Null shardIterator for " + shard.getShardId() + ". This can happen if shard is closed.");
             return Records.empty(true);
         }
 
-        final ImmutableList.Builder<Record> records = new ImmutableList.Builder<>();
-        
+        final ImmutableList.Builder<Record> records = new ImmutableList.Builder<Record>();
+
         try {
             final GetRecordsRequest request = new GetRecordsRequest();
             request.setShardIterator(shardIterator);
@@ -93,20 +93,22 @@ class KinesisShardGetter implements IShardGetter {
                         + maxNumberOfRecords + ").");
             }
 
-            shardIterator = result.getNextShardIterator();            
+            shardIterator = result.getNextShardIterator();
         } catch (AmazonClientException e) {
             // We'll treat this equivalent to fetching 0 records - the spout drives the retry as part of nextTuple()
             // We don't sleep here - we can continue processing ack/fail on the spout thread.
-            LOG.error(this + "Caught exception when fetching records for " + shardId, e);
+            LOG.error(this + "Caught exception when fetching records for " + shard.getShardId(), e);
         }
 
-        return new Records(records.build(), shardIterator == null);
+        final boolean endOfShard = shardIterator == null;
+        final boolean reshard = endOfShard && shard.getShardOpen();
+        return new Records(records.build(), endOfShard, reshard);
     }
 
     @Override
     public void seek(ShardPosition position)
         throws AmazonClientException, ResourceNotFoundException, InvalidSeekPositionException {
-        LOG.info("Seeking to " + position);
+        LOG.info(this + " Seeking to " + position + " for shard " + shard.getShardId());
 
         ShardIteratorType iteratorType;
         String seqNum = null;
@@ -145,12 +147,12 @@ class KinesisShardGetter implements IShardGetter {
 
     @Override
     public String getAssociatedShard() {
-        return shardId;
+        return shard.getShardId();
     }
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("shardId", shardId).toString();
+        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("shardId", shard.getShardId()).toString();
     }
 
     private String seek(final ShardIteratorType iteratorType, final String seqNum)
@@ -158,7 +160,7 @@ class KinesisShardGetter implements IShardGetter {
         final GetShardIteratorRequest request = new GetShardIteratorRequest();
 
         request.setStreamName(streamName);
-        request.setShardId(shardId);
+        request.setShardId(shard.getShardId());
         request.setShardIteratorType(iteratorType);
 
         // SeqNum is only set on {AT, AFTER}_SEQUENCE_NUMBER, so this is safe.
