@@ -18,10 +18,12 @@ package com.amazonaws.services.kinesis.stormspout;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.amazonaws.AmazonClientException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Region;
@@ -30,6 +32,7 @@ import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
 import com.amazonaws.services.kinesis.model.Shard;
+import com.amazonaws.services.kinesis.stormspout.utils.InfiniteConstantBackoffRetry;
 import com.amazonaws.services.kinesis.stormspout.utils.ShardIdComparator;
 import com.google.common.collect.ImmutableSortedMap;
 
@@ -42,6 +45,7 @@ class KinesisHelper implements IShardListGetter {
     private static final ShardIdComparator SHARD_ID_COMPARATOR = new ShardIdComparator();
     private static final Integer DESCRIBE_STREAM_LIMIT = 1000;
     private static final String KINESIS_STORM_SPOUT_USER_AGENT = "kinesis-storm-spout-java-1.1.0";
+    private static final long BACKOFF_MILLIS = 1000L;
 
     private final byte[] serializedKinesisCredsProvider;
     private final byte[] serializedkinesisClientConfig;
@@ -82,7 +86,7 @@ class KinesisHelper implements IShardListGetter {
 
         input.setStreamName(streamName);
         input.setLimit(DESCRIBE_STREAM_LIMIT);
-        out = getSharedkinesisClient().describeStream(input);
+        out = getDescribeStreamResult(input);
 
         while (true) {
             String lastShard = addTruncatedShardList(spoutShards, out.getStreamDescription().getShards());
@@ -94,10 +98,20 @@ class KinesisHelper implements IShardListGetter {
 
             LOG.debug("There are more shards in the stream, continue paginated calls.");
             input.setExclusiveStartShardId(lastShard);
-            out = getSharedkinesisClient().describeStream(input);
+            out = getDescribeStreamResult(input);
         }
 
         return ImmutableSortedMap.copyOf(spoutShards, SHARD_ID_COMPARATOR);
+    }
+
+    private DescribeStreamResult getDescribeStreamResult(final DescribeStreamRequest request) {
+        return new InfiniteConstantBackoffRetry<DescribeStreamResult>(BACKOFF_MILLIS, AmazonClientException.class,
+                new Callable<DescribeStreamResult>() {
+            public DescribeStreamResult call() throws Exception {
+                DescribeStreamResult result = getSharedkinesisClient().describeStream(request);
+                return result;
+            }
+        }).call();
     }
 
     /**
