@@ -106,6 +106,16 @@ class ZookeeperShardState {
     }
 
     /**
+     * Delete the shard list in ZK. This is called by every spout task on deactivate(), so that
+     * when the task is reactivated, the latest shard list is retrieved.
+     *
+     * @throws Exception
+     */
+    void clearShardList() throws Exception {
+        delete(SHARD_LIST_SUFFIX);
+    }
+
+    /**
      * Commit the checkpoint sequence number for a shard to Zookeeper.
      *
      * @param  shardId  shard to commit to.
@@ -205,6 +215,21 @@ class ZookeeperShardState {
             @Override
             public byte[] call() throws Exception {
                 return zk.getData().forPath(buildZookeeperPath(pathSuffix));
+            }
+        });
+    }
+
+    private void delete(final String pathSuffix) throws Exception {
+        RetryLoop.callWithRetry(zk.getZookeeperClient(), new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                try {
+                    zk.delete().forPath(buildZookeeperPath(pathSuffix));
+                    return null;
+                } catch (KeeperException.NoNodeException e) {
+                    // likely deleted by another task
+                    return null;
+                }
             }
         });
     }

@@ -64,7 +64,6 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     private Iterator<IShardGetter> currentGetter;
     private Map<String, LocalShardState> shardStates;
 
-
     /**
      * @param config Spout configuration with ZK preferences.
      * @param shardListGetter Used to fetch the list of shards in the stream.
@@ -127,6 +126,11 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
         commitShardStates();
 
         this.active = false;
+        try {
+            zk.clearShardList();
+        } catch (Exception e) {
+            LOG.error(this + " something went wrong while clearing Zookeeper shard list.", e);
+        }
         zk.close();
     }
 
@@ -161,7 +165,6 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
         commitShardStates();
         bootstrapStateFromZookeeper();
     }
-
 
     /* (non-Javadoc)
      * @see com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager#ack(
@@ -212,7 +215,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     public boolean shouldRetry(final String shardId) {
         return safeGetShardState(shardId).shouldRetry();
     }
-    
+
     /* (non-Javadoc)
      * @see com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager#recordToRetry(java.lang.String)
      */
