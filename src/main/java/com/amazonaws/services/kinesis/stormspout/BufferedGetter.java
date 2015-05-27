@@ -72,7 +72,7 @@ class BufferedGetter implements IShardGetter {
         ensureBuffered();
 
         if (!it.hasNext() && buffer.isEndOfShard()) {
-            return new Records(ImmutableList.<Record> of(), true);
+            return new Records(ImmutableList.<Record> of(), true, buffer.isReshard());
         }
 
         ImmutableList.Builder<Record> recs = new ImmutableList.Builder<>();
@@ -94,7 +94,7 @@ class BufferedGetter implements IShardGetter {
             }
         }
 
-        return new Records(recs.build(), false);
+        return new Records(recs.build(), false, buffer.isReshard());
     }
 
     @Override

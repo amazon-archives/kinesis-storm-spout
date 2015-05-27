@@ -36,7 +36,7 @@ class LocalShardState {
 
     /**
      * Constructor.
-     * 
+     *
      * @param shardId ID of the shard this LocalShardState is tracking.
      * @param latestZookeeperSeqNum the last checkpoint stored in Zookeeper.
      * @param recordRetryLimit Number of times a failed record should be retried.
@@ -67,7 +67,7 @@ class LocalShardState {
         tracker.onAck(seqNum);
     }
 
-    /** 
+    /**
      * Call when a record is failed. It is then added to a retry queue that is queried by
      * nextTuple().
      *
@@ -86,6 +86,14 @@ class LocalShardState {
     Record recordToRetry() {
         assert shouldRetry() : "Nothing to retry.";
         return tracker.recordToRetry();
+    }
+
+    Record getInflightRecord(final String seqNum) {
+        return tracker.getInflightRecord(seqNum);
+    }
+
+    Record getEarliestInflightRecord() {
+        return tracker.getEarliestInflightRecord();
     }
 
     /**

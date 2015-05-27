@@ -25,16 +25,19 @@ import com.google.common.collect.ImmutableList;
 class Records {
     private final ImmutableList<Record> records;
     private final boolean endOfShard;
+    private final boolean reshard;
 
     /**
      * Constructor.
      * 
      * @param records Kinesis records
      * @param endOfShard Did we reach the end of the shard?
+     * @param reshard Has a reshard (shard split or merge) event occurred?
      */
-    Records(final ImmutableList<Record> records, final boolean endOfShard) {
+    Records(final ImmutableList<Record> records, final boolean endOfShard, final boolean reshard) {
         this.records = records;
         this.endOfShard = endOfShard;
+        this.reshard = reshard;
     }
 
     /**
@@ -49,7 +52,7 @@ class Records {
      * @return a new empty set of records for an open or closed shard.
      */
     static Records empty(final boolean closed) {
-        return new Records(ImmutableList.<Record> of(), closed);
+        return new Records(ImmutableList.<Record> of(), closed, false);
     }
 
     /**
@@ -64,6 +67,13 @@ class Records {
      */
     boolean isEndOfShard() {
         return endOfShard;
+    }
+
+    /**
+     * @return true if a reshard event was detected.
+     */
+    boolean isReshard() {
+        return reshard;
     }
 
     /**

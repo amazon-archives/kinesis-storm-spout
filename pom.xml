@@ -6,7 +6,7 @@
     <artifactId>kinesis-storm-spout</artifactId>
     <packaging>jar</packaging>
     <name>Amazon Kinesis Storm Spout for Java</name>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <description> The Amazon Kinesis Storm Spout helps Java developers integrate Amazon Kinesis with Storm.</description>
     <url>https://aws.amazon.com/kinesis</url>
 
@@ -30,8 +30,8 @@
         <guava.version>13.0-final</guava.version>
         <commons-lang3.version>3.0</commons-lang3.version>
     </properties>
-    
-    
+
+
     <dependencies>
         <dependency>
             <groupId>com.amazonaws</groupId>
