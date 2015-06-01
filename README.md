@@ -31,14 +31,16 @@ The samples folder includes a sample topology and sample bolt, using the number 
 3. Deploy the package to Storm via the JAR file, e.g., `storm jar my-spout-sample.jar SampleTopology sample.properties RemoteMode` 
 
 ## Release Notes
-### Release 1.1 (October 21, 2014)
+### Release 1.1.1 (June 1, 2015)
++ When a Kinesis Stream is resharded, "storm rebalance" can be invoked to refresh the shard list and distribute the latest shards across the Spout tasks.
+
+### Release 1.1.0 (October 21, 2014)
 + Added support for retrying failed records
 + Added region name support
 
-
 ### Future Work
 
-+ Handle closed, split, and merged shards 
++ Automatically handle closed, split, and merged shards.
 
 ## Related Resources
 
