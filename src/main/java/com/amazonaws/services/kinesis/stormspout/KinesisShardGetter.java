@@ -77,6 +77,7 @@ class KinesisShardGetter implements IShardGetter {
         }
 
         final ImmutableList.Builder<Record> records = new ImmutableList.Builder<>();
+        long millisBehindLatest = 0l;
         
         try {
             final GetRecordsRequest request = new GetRecordsRequest();
@@ -93,14 +94,15 @@ class KinesisShardGetter implements IShardGetter {
                         + maxNumberOfRecords + ").");
             }
 
-            shardIterator = result.getNextShardIterator();            
+            shardIterator = result.getNextShardIterator();
+            millisBehindLatest = result.getMillisBehindLatest();
         } catch (AmazonClientException e) {
             // We'll treat this equivalent to fetching 0 records - the spout drives the retry as part of nextTuple()
             // We don't sleep here - we can continue processing ack/fail on the spout thread.
             LOG.error(this + "Caught exception when fetching records for " + shardId, e);
         }
 
-        return new Records(records.build(), shardIterator == null);
+        return new Records(records.build(), millisBehindLatest, shardIterator == null);
     }
 
     @Override

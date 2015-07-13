@@ -15,10 +15,10 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import java.io.Serializable;
-
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
+
+import java.io.Serializable;
 
 /**
  * Kinesis Spout configuration.
@@ -43,6 +43,9 @@ public class KinesisSpoutConfig implements Serializable {
 
     // Gets set by the spout later on.
     private String topologyName = "UNNAMED_TOPOLOGY";
+
+    private boolean traceRetryCount = false;
+    private  boolean traceMillisBehindLast = false;
 
     public KinesisSpoutConfig(final String streamName, final String zookeeperConnectionString) {
         this.streamName = streamName;
@@ -273,5 +276,32 @@ public class KinesisSpoutConfig implements Serializable {
     public KinesisSpoutConfig withEmptyRecordListBackoffMillis(long emptyRecordListBackoffMillis) {
         this.emptyRecordListBackoffMillis = emptyRecordListBackoffMillis;
         return this;
+    }
+
+    /**
+     * @param traceRetryCount enable a metric to trace the number of tuples retried by the spout
+     * @return KinesisSpoutConfig
+     */
+    public KinesisSpoutConfig withTraceRetryCount(boolean traceRetryCount) {
+        this.traceRetryCount = traceRetryCount;
+        return this;
+    }
+
+    /**
+     * @param traceMillisBehindLast enable a metric to trace how far from the tip of the stream is the set of records
+     *                              currently processed by the spout
+     * @return KinesisSpoutConfig
+     */
+    public KinesisSpoutConfig withTraceMillisBehindLast(boolean traceMillisBehindLast) {
+        this.traceMillisBehindLast = traceMillisBehindLast;
+        return this;
+    }
+
+    public boolean isTraceMillisBehindLast() {
+        return traceMillisBehindLast;
+    }
+
+    public boolean isTraceRetryCount() {
+        return traceRetryCount;
     }
 }
