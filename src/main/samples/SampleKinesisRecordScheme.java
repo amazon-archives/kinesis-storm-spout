@@ -30,6 +30,11 @@ public class SampleKinesisRecordScheme implements IKinesisRecordScheme {
      * Name of the (partition key) value in the tuple.
      */
     public static final String FIELD_PARTITION_KEY = "partitionKey";
+
+    /**
+     * Name of the (shard id) value in the tuple.
+     */
+    public static final String FIELD_SHARD_ID = "shardId";
     
     /**
      * Name of the sequence number value in the tuple.
@@ -55,9 +60,10 @@ public class SampleKinesisRecordScheme implements IKinesisRecordScheme {
      * .Record)
      */
     @Override
-    public List<Object> deserialize(Record record) {
+    public List<Object> deserialize(Record record, String shardId) {
         final List<Object> l = new ArrayList<>();
         l.add(record.getPartitionKey());
+        l.add(shardId);
         l.add(record.getSequenceNumber());
         l.add(record.getData().array());
         return l;
@@ -70,6 +76,6 @@ public class SampleKinesisRecordScheme implements IKinesisRecordScheme {
      */
     @Override
     public Fields getOutputFields() {
-        return new Fields(FIELD_PARTITION_KEY, FIELD_SEQUENCE_NUMBER, FIELD_RECORD_DATA);
+        return new Fields(FIELD_PARTITION_KEY, FIELD_SHARD_ID, FIELD_SEQUENCE_NUMBER, FIELD_RECORD_DATA);
     }
 }

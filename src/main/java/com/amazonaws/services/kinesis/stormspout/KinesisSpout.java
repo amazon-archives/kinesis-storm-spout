@@ -180,7 +180,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
             if (rec != null) {
                 // Copy record (ByteBuffer.duplicate()) so bolts in the same JVM don't affect the object (e.g. retries)
                 Record recordToEmit = copyRecord(rec);
-                List<Object> tuple = config.getScheme().deserialize(recordToEmit);
+                List<Object> tuple = config.getScheme().deserialize(recordToEmit, currentShardId);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug(this + " emitting record with seqnum " + recordToEmit.getSequenceNumber() + " from shard "
                             + currentShardId + ".");
