@@ -33,6 +33,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.io.Serializable;
 import java.util.List;
@@ -46,6 +47,7 @@ import java.util.Map;
 public class KinesisSpout implements IRichSpout, Serializable {
     private static final long serialVersionUID = 7707829996758189836L;
     private static final Logger LOG = LoggerFactory.getLogger(KinesisSpout.class);
+    public static final String TOPOLOGY_NAME_MDC_KEY = "component";
 
     private final InitialPositionInStream initialPosition;
 
@@ -112,6 +114,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
         this.context = spoutContext;
         this.collector = spoutCollector;
         this.stateManager = new ZookeeperStateManager(config, shardListGetter, getterBuilder, initialPosition);
+        MDC.put(TOPOLOGY_NAME_MDC_KEY, (String) conf.get(Config.TOPOLOGY_NAME));
         LOG.info(this + " open() called with topoConfig task index " + spoutContext.getThisTaskIndex()
                 + " for processing stream " + config.getStreamName());
         openMetrics(conf);
@@ -143,6 +146,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
 
     @Override
     public void close() {
+        MDC.remove(TOPOLOGY_NAME_MDC_KEY);
     }
 
     @Override
