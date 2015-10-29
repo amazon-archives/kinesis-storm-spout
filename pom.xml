@@ -27,7 +27,7 @@
         <aws-java-sdk.version>1.10.29</aws-java-sdk.version>
         <storm.version>0.9.5</storm.version>
         <curator-framework.version>1.1.3</curator-framework.version>
-        <guava.version>13.0-final</guava.version>
+        <guava.version>18.0</guava.version>
         <commons-lang3.version>3.0</commons-lang3.version>
     </properties>
     
@@ -47,12 +47,12 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
             <version>${storm.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.netflix.curator</groupId>
@@ -103,6 +103,31 @@
             </execution>
           </executions>
         </plugin>
+          <plugin>
+              <!-- Embed guava to avoid clashing with guava version imported in storm -->
+              <groupId>org.sonatype.plugins</groupId>
+              <artifactId>jarjar-maven-plugin</artifactId>
+              <version>1.9</version>
+              <executions>
+                  <execution>
+                      <phase>package</phase>
+                      <goals>
+                          <goal>jarjar</goal>
+                      </goals>
+                      <configuration>
+                          <includes>
+                              <include>com.google.guava:guava</include>
+                          </includes>
+                          <rules>
+                              <rule>
+                                  <pattern>com.google.**</pattern>
+                                  <result>com.amazonaws.services.kinesis.stormspout.@1</result>
+                              </rule>
+                          </rules>
+                      </configuration>
+                  </execution>
+              </executions>
+          </plugin>
       </plugins>
     </build>
 
