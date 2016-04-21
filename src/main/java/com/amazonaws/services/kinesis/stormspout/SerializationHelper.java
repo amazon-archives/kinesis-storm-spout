@@ -59,7 +59,8 @@ class SerializationHelper {
         final ByteArrayOutputStream os = new ByteArrayOutputStream();
         final Output output = new Output(os);
 
-        kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
+        // Better initialization to keep a fallback and prevent crash
+        ((Kryo.DefaultInstantiatorStrategy) kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(new StdInstantiatorStrategy());
         kryo.writeClassAndObject(output, obj);
 
         output.flush();
@@ -70,7 +71,9 @@ class SerializationHelper {
         final Kryo kryo = new Kryo();
         final Input input = new Input(new ByteArrayInputStream(ser));
 
-        kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
+        // Better initialization to keep a fallback and prevent crash
+        ((Kryo.DefaultInstantiatorStrategy) kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(new StdInstantiatorStrategy());
+
         return kryo.readClassAndObject(input);
     }
 }
