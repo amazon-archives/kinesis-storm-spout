@@ -70,7 +70,9 @@ class SerializationHelper {
         final Kryo kryo = new Kryo();
         final Input input = new Input(new ByteArrayInputStream(ser));
 
-        kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
+
+        ((Kryo.DefaultInstantiatorStrategy) kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(new StdInstantiatorStrategy());
+
         return kryo.readClassAndObject(input);
     }
 }
