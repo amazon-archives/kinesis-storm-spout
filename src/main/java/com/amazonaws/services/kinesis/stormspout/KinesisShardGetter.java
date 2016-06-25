@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.ExpiredIteratorException;
 import com.amazonaws.services.kinesis.model.GetRecordsRequest;
@@ -31,7 +30,6 @@ import com.amazonaws.services.kinesis.model.GetRecordsResult;
 import com.amazonaws.services.kinesis.model.GetShardIteratorRequest;
 import com.amazonaws.services.kinesis.model.GetShardIteratorResult;
 import com.amazonaws.services.kinesis.model.InvalidArgumentException;
-import com.amazonaws.services.kinesis.model.ProvisionedThroughputExceededException;
 import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.model.ResourceNotFoundException;
 import com.amazonaws.services.kinesis.model.ShardIteratorType;
@@ -77,7 +75,7 @@ class KinesisShardGetter implements IShardGetter {
         }
 
         final ImmutableList.Builder<Record> records = new ImmutableList.Builder<>();
-        
+
         try {
             final GetRecordsRequest request = new GetRecordsRequest();
             request.setShardIterator(shardIterator);
@@ -93,7 +91,7 @@ class KinesisShardGetter implements IShardGetter {
                         + maxNumberOfRecords + ").");
             }
 
-            shardIterator = result.getNextShardIterator();            
+            shardIterator = result.getNextShardIterator();
         } catch (AmazonClientException e) {
             // We'll treat this equivalent to fetching 0 records - the spout drives the retry as part of nextTuple()
             // We don't sleep here - we can continue processing ack/fail on the spout thread.

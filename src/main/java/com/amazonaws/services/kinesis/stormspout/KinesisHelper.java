@@ -27,7 +27,6 @@ import com.amazonaws.AmazonClientException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Region;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
@@ -121,7 +120,7 @@ class KinesisHelper implements IShardListGetter {
     private AmazonKinesisClient makeNewKinesisClient() {
         AmazonKinesisClient client = new AmazonKinesisClient(getKinesisCredsProvider(), getClientConfiguration());
         LOG.info("Using " + getRegion().getName() + " region");
-        client.setRegion(getRegion());       
+        client.setRegion(getRegion());
         return client;
     }
 
