@@ -15,10 +15,13 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
-import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
+import org.apache.curator.RetryLoop;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
@@ -32,10 +35,6 @@ import com.amazonaws.services.kinesis.stormspout.state.zookeeper.NodeFunction.Mo
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.netflix.curator.RetryLoop;
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
-import com.netflix.curator.retry.ExponentialBackoffRetry;
 
 /**
  * Handles communication with Zookeeper and methods specific to the spout for saving/restoring
@@ -61,13 +60,9 @@ class ZookeeperShardState {
         this.config = config;
         this.rand = new Random();
 
-        try {
-            zk = CuratorFrameworkFactory.newClient(config.getZookeeperConnectionString(),
-                    new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_NUM_RETRIES));
-        } catch (IOException e) {
-            LOG.error("Could not connect to ZooKeeper", e);
-            throw new KinesisSpoutException(e);
-        }
+        zk = CuratorFrameworkFactory.newClient(config.getZookeeperConnectionString(),
+                new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_NUM_RETRIES));
+
         zk.start();
     }
 
@@ -162,7 +157,7 @@ class ZookeeperShardState {
 
     /**
      * Set a watcher for the shardList.
-     * 
+     *
      * @param callback Zookeeper watcher to be set on the shard list.
      * @throws Exception
      */
@@ -180,7 +175,7 @@ class ZookeeperShardState {
 
     /**
      * Closes the connection to ZK.
-     * 
+     *
      * @throws InterruptedException
      */
     void close() throws InterruptedException {
@@ -190,7 +185,7 @@ class ZookeeperShardState {
     /**
      * Optimistic concurrency scheme for tryAtomicUpdate. Try to update, and keep trying
      * until successful.
-     * 
+     *
      * @param pathSuffix suffix to use to build path in ZooKeeper.
      * @param f function used to initialize the node, or transform the data already there.
      * @throws Exception
@@ -247,7 +242,7 @@ class ZookeeperShardState {
     /**
      * Try to atomically update a node in ZooKeeper, creating it if it doesn't exist. This is
      * meant to be used within an optimistic concurrency model.
-     * 
+     *
      * @param pathSuffix suffix to use to build path in ZooKeeper.
      * @param f function used to initialize the node, or transform the data already there.
      * @return true if node was created/updated, false if a concurrent modification occurred
