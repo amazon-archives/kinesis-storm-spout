@@ -14,22 +14,19 @@
  */
 
 
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.BasicOutputCollector;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.topology.base.BaseBasicBolt;
+import org.apache.storm.tuple.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import backtype.storm.task.TopologyContext;
-import backtype.storm.topology.BasicOutputCollector;
-import backtype.storm.topology.OutputFieldsDeclarer;
-import backtype.storm.topology.base.BaseBasicBolt;
-import backtype.storm.tuple.Tuple;
-
-import com.amazonaws.services.kinesis.model.Record;
 
 public class SampleBolt extends BaseBasicBolt {
     private static final long serialVersionUID = 177788290277634253L;
@@ -40,14 +37,14 @@ public class SampleBolt extends BaseBasicBolt {
     public void prepare(Map stormConf, TopologyContext context) {
         decoder = Charset.forName("UTF-8").newDecoder();
     }
-    
+
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
-        String partitionKey = (String)input.getValueByField(SampleKinesisRecordScheme.FIELD_PARTITION_KEY);
-        String sequenceNumber = (String)input.getValueByField(SampleKinesisRecordScheme.FIELD_SEQUENCE_NUMBER);
-        byte[] payload = (byte[])input.getValueByField(SampleKinesisRecordScheme.FIELD_RECORD_DATA);
+        String partitionKey = (String) input.getValueByField(SampleKinesisRecordScheme.FIELD_PARTITION_KEY);
+        String sequenceNumber = (String) input.getValueByField(SampleKinesisRecordScheme.FIELD_SEQUENCE_NUMBER);
+        byte[] payload = (byte[]) input.getValueByField(SampleKinesisRecordScheme.FIELD_RECORD_DATA);
         ByteBuffer buffer = ByteBuffer.wrap(payload);
-        String data = null; 
+        String data = null;
         try {
             data = decoder.decode(buffer).toString();
         } catch (CharacterCodingException e) {

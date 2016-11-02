@@ -15,13 +15,12 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
+import com.amazonaws.services.kinesis.model.Record;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.amazonaws.services.kinesis.model.Record;
 
 /**
  * This class tracks the state of a shard (e.g. current shard position).
@@ -36,10 +35,10 @@ class LocalShardState {
 
     /**
      * Constructor.
-     * 
-     * @param shardId ID of the shard this LocalShardState is tracking.
+     *
+     * @param shardId               ID of the shard this LocalShardState is tracking.
      * @param latestZookeeperSeqNum the last checkpoint stored in Zookeeper.
-     * @param recordRetryLimit Number of times a failed record should be retried.
+     * @param recordRetryLimit      Number of times a failed record should be retried.
      */
     LocalShardState(final String shardId, final String latestZookeeperSeqNum, final int recordRetryLimit) {
         this.shardId = shardId;
@@ -50,7 +49,7 @@ class LocalShardState {
     /**
      * Call when a record is emitted in nextTuple.
      *
-     * @param record the Kinesis record emitted.
+     * @param record  the Kinesis record emitted.
      * @param isRetry Is this a retry attempt of a previously emitted record.
      */
     void emit(final Record record, boolean isRetry) {
@@ -61,17 +60,17 @@ class LocalShardState {
      * Call when a record is acknowledged. This will try to update the latest offset to be
      * stored in Zookeeper, if possible.
      *
-     * @param seqNum  the sequence number of the record.
+     * @param seqNum the sequence number of the record.
      */
     void ack(final String seqNum) {
         tracker.onAck(seqNum);
     }
 
-    /** 
+    /**
      * Call when a record is failed. It is then added to a retry queue that is queried by
      * nextTuple().
      *
-     * @param failedSequenceNumber  sequence number of failed record.
+     * @param failedSequenceNumber sequence number of failed record.
      */
     void fail(final String failedSequenceNumber) {
         tracker.onFail(failedSequenceNumber);
@@ -79,13 +78,22 @@ class LocalShardState {
 
     /**
      * Get a record to retry.
-     *
+     * <p>
      * Pre : shouldRetry().
+     *
      * @return a record to retry - may be null if we can't find a record to retry.
      */
     Record recordToRetry() {
         assert shouldRetry() : "Nothing to retry.";
         return tracker.recordToRetry();
+    }
+
+    Record getInflightRecord(final String seqNum) {
+        return tracker.getInflightRecord(seqNum);
+    }
+
+    Record getEarliestInflightRecord() {
+        return tracker.getEarliestInflightRecord();
     }
 
     /**
@@ -114,6 +122,7 @@ class LocalShardState {
 
     /**
      * Record the sequenced number we checkpointed.
+     *
      * @param checkpointSequenceNumber Sequence number we used to checkpoint.
      */
     void commit(String checkpointSequenceNumber) {
@@ -124,7 +133,7 @@ class LocalShardState {
      * Helper log function. Checks that debug logging is enabled before evaluating the
      * detailedToString() function.
      *
-     * @param prefix  prefix to prepend to log message.
+     * @param prefix prefix to prepend to log message.
      */
     void logMe(String prefix) {
         if (LOG.isDebugEnabled()) {
@@ -135,8 +144,8 @@ class LocalShardState {
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-            .append("shardId", shardId)
-            .toString();
+                .append("shardId", shardId)
+                .toString();
     }
 
     private String detailedToString() {

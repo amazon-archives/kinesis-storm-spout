@@ -14,27 +14,27 @@
  */
 
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.Properties;
-
-import org.apache.zookeeper.KeeperException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import backtype.storm.Config;
-import backtype.storm.LocalCluster;
-import backtype.storm.StormSubmitter;
-import backtype.storm.generated.AlreadyAliveException;
-import backtype.storm.generated.InvalidTopologyException;
-import backtype.storm.topology.TopologyBuilder;
-import backtype.storm.tuple.Fields;
-
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.stormspout.InitialPositionInStream;
 import com.amazonaws.services.kinesis.stormspout.KinesisSpout;
 import com.amazonaws.services.kinesis.stormspout.KinesisSpoutConfig;
+import com.amazonaws.services.kinesis.stormspout.serializer.RecordSerializer;
+import org.apache.storm.Config;
+import org.apache.storm.LocalCluster;
+import org.apache.storm.StormSubmitter;
+import org.apache.storm.generated.AlreadyAliveException;
+import org.apache.storm.generated.AuthorizationException;
+import org.apache.storm.generated.InvalidTopologyException;
+import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
+import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
 
 public class SampleTopology {
     private static final Logger LOG = LoggerFactory.getLogger(SampleTopology.class);
@@ -46,17 +46,17 @@ public class SampleTopology {
     private static String zookeeperEndpoint;
     private static String zookeeperPrefix;
 
-    public static void main(String[] args) throws IllegalArgumentException, KeeperException, InterruptedException, AlreadyAliveException, InvalidTopologyException, IOException {
+    public static void main(String[] args) throws IllegalArgumentException, KeeperException, InterruptedException, AlreadyAliveException, InvalidTopologyException, IOException, AuthorizationException {
         String propertiesFile = null;
         String mode = null;
-        
+
         if (args.length != 2) {
             printUsageAndExit();
         } else {
             propertiesFile = args[0];
             mode = args[1];
         }
-        
+
         configure(propertiesFile);
 
         final KinesisSpoutConfig config =
@@ -76,6 +76,7 @@ public class SampleTopology {
 
         Config topoConf = new Config();
         topoConf.setFallBackOnJavaSerialization(true);
+        topoConf.registerSerialization(Record.class, RecordSerializer.class);
         topoConf.setDebug(false);
 
         if (mode.equals("LocalMode")) {
@@ -85,13 +86,13 @@ public class SampleTopology {
             topoConf.setNumWorkers(1);
             topoConf.setMaxSpoutPending(5000);
             LOG.info("Submitting sample topology " + topologyName + " to remote cluster.");
-            StormSubmitter.submitTopology(topologyName, topoConf, builder.createTopology());            
+            StormSubmitter.submitTopology(topologyName, topoConf, builder.createTopology());
         } else {
             printUsageAndExit();
         }
 
     }
-    
+
     private static void configure(String propertiesFile) throws IOException {
         FileInputStream inputStream = new FileInputStream(propertiesFile);
         Properties properties = new Properties();
@@ -115,10 +116,10 @@ public class SampleTopology {
 
         String initialPositionOverride = properties.getProperty(ConfigKeys.INITIAL_POSITION_IN_STREAM_KEY);
         if (initialPositionOverride != null) {
-             initialPositionInStream = InitialPositionInStream.valueOf(initialPositionOverride);
+            initialPositionInStream = InitialPositionInStream.valueOf(initialPositionOverride);
         }
         LOG.info("Using initial position " + initialPositionInStream.toString() + " (if a checkpoint is not found).");
-        
+
         String recordRetryLimitOverride = properties.getProperty(ConfigKeys.RECORD_RETRY_LIMIT);
         if (recordRetryLimitOverride != null) {
             recordRetryLimit = Integer.parseInt(recordRetryLimitOverride.trim());
@@ -138,13 +139,13 @@ public class SampleTopology {
         LOG.info("Using zookeeper endpoint " + zookeeperEndpoint);
 
         String zookeeperPrefixOverride = properties.getProperty(ConfigKeys.ZOOKEEPER_PREFIX_KEY);
-        if (zookeeperPrefixOverride != null) {            
+        if (zookeeperPrefixOverride != null) {
             zookeeperPrefix = zookeeperPrefixOverride;
         }
         LOG.info("Using zookeeper prefix " + zookeeperPrefix);
 
     }
-    
+
     private static void printUsageAndExit() {
         System.out.println("Usage: " + SampleTopology.class.getName() + " <propertiesFile> <LocalMode or RemoteMode>");
         System.exit(-1);

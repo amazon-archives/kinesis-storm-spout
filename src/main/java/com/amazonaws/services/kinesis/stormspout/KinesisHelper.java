@@ -15,19 +15,10 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Region;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
@@ -35,6 +26,13 @@ import com.amazonaws.services.kinesis.model.Shard;
 import com.amazonaws.services.kinesis.stormspout.utils.InfiniteConstantBackoffRetry;
 import com.amazonaws.services.kinesis.stormspout.utils.ShardIdComparator;
 import com.google.common.collect.ImmutableSortedMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * Helper class to fetch the shard list from Kinesis, create Kinesis client objects, etc.
@@ -58,14 +56,14 @@ class KinesisHelper implements IShardListGetter {
     private transient Region region;
 
     /**
-     * @param streamName Kinesis stream name to interact with.
+     * @param streamName           Kinesis stream name to interact with.
      * @param kinesisCredsProvider Credentials for authentication with Kinesis.
-     * @param kinesisClientConfig Configuration for the Kinesis client.
+     * @param kinesisClientConfig  Configuration for the Kinesis client.
      */
     KinesisHelper(final String streamName,
-            final AWSCredentialsProvider kinesisCredsProvider,
-            final ClientConfiguration kinesisClientConfig,
-            final Region region) {
+                  final AWSCredentialsProvider kinesisCredsProvider,
+                  final ClientConfiguration kinesisClientConfig,
+                  final Region region) {
         this.streamName = streamName;
         this.serializedKinesisCredsProvider = SerializationHelper.kryoSerializeObject(kinesisCredsProvider);
         this.serializedkinesisClientConfig = SerializationHelper.kryoSerializeObject(kinesisClientConfig);
@@ -107,21 +105,21 @@ class KinesisHelper implements IShardListGetter {
     private DescribeStreamResult getDescribeStreamResult(final DescribeStreamRequest request) {
         return new InfiniteConstantBackoffRetry<DescribeStreamResult>(BACKOFF_MILLIS, AmazonClientException.class,
                 new Callable<DescribeStreamResult>() {
-            public DescribeStreamResult call() throws Exception {
-                DescribeStreamResult result = getSharedkinesisClient().describeStream(request);
-                return result;
-            }
-        }).call();
+                    public DescribeStreamResult call() throws Exception {
+                        DescribeStreamResult result = getSharedkinesisClient().describeStream(request);
+                        return result;
+                    }
+                }).call();
     }
 
     /**
      * @return new instance of AmazonKinesisClient, with parameters supplied by whatever was passed
-     *         to the KinesisHelper constructor.
+     * to the KinesisHelper constructor.
      */
     private AmazonKinesisClient makeNewKinesisClient() {
         AmazonKinesisClient client = new AmazonKinesisClient(getKinesisCredsProvider(), getClientConfiguration());
         LOG.info("Using " + getRegion().getName() + " region");
-        client.setRegion(getRegion());       
+        client.setRegion(getRegion());
         return client;
     }
 
@@ -165,7 +163,8 @@ class KinesisHelper implements IShardListGetter {
 
         for (Shard s : streamShards) {
             currShard = s.getShardId();
-            spoutShards.put(s.getShardId(), new ShardInfo(s.getShardId()));
+            final boolean open = s.getSequenceNumberRange().getEndingSequenceNumber() == null;
+            spoutShards.put(s.getShardId(), new ShardInfo(s.getShardId(), open));
 
             if (s.getParentShardId() != null && s.getAdjacentParentShardId() != null) {
                 // It's a merge. Set both parents of the merge to merge into this shard.

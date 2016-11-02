@@ -15,14 +15,13 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import com.amazonaws.services.kinesis.model.Record;
+import com.amazonaws.services.kinesis.stormspout.*;
+import com.amazonaws.services.kinesis.stormspout.exceptions.InvalidSeekPositionException;
+import com.amazonaws.services.kinesis.stormspout.exceptions.KinesisSpoutException;
+import com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.zookeeper.WatchedEvent;
@@ -31,18 +30,13 @@ import org.apache.zookeeper.Watcher.Event.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.amazonaws.services.kinesis.model.Record;
-import com.amazonaws.services.kinesis.stormspout.IShardGetter;
-import com.amazonaws.services.kinesis.stormspout.IShardGetterBuilder;
-import com.amazonaws.services.kinesis.stormspout.IShardListGetter;
-import com.amazonaws.services.kinesis.stormspout.InitialPositionInStream;
-import com.amazonaws.services.kinesis.stormspout.KinesisSpoutConfig;
-import com.amazonaws.services.kinesis.stormspout.ShardPosition;
-import com.amazonaws.services.kinesis.stormspout.exceptions.InvalidSeekPositionException;
-import com.amazonaws.services.kinesis.stormspout.exceptions.KinesisSpoutException;
-import com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Zookeeper backed IKinesisSpoutStateManager.
@@ -50,24 +44,26 @@ import com.google.common.collect.Iterators;
 public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager {
     private static final Logger LOG = LoggerFactory.getLogger(ZookeeperStateManager.class);
 
+    // initialized at construction
     private final KinesisSpoutConfig config;
+    private final ShardPosition seekToOnOpen;
     private final IShardListGetter shardListGetter;
     private final IShardGetterBuilder getterBuilder;
-    private final ShardPosition seekToOnOpen;
 
+    // updated at activate and deactivate
     private ZookeeperShardState zk;
+    private boolean active;
     private int taskIndex;
     private int totalNumTasks;
-    private boolean active;
 
-    private ImmutableList<IShardGetter> getters;
+    // initialized at bootstrap
     private Iterator<IShardGetter> currentGetter;
     private Map<String, LocalShardState> shardStates;
 
     /**
-     * @param config Spout configuration with ZK preferences.
+     * @param config          Spout configuration with ZK preferences.
      * @param shardListGetter Used to fetch the list of shards in the stream.
-     * @param getterBuilder Used to build getters for shards a task is responsible for.
+     * @param getterBuilder   Used to build getters for shards a task is responsible for.
      * @param initialPosition Fetch records from this position when there is no pre-existing ZK state.
      */
     public ZookeeperStateManager(
@@ -95,6 +91,23 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
         return position;
     }
 
+    /**
+     * Ensure that the task can safely be activated
+     * This will take care of making sure the list is sorted too.
+     */
+    public void initialize() {
+        ImmutableList<String> shardList = ImmutableList.copyOf(shardListGetter.getShardList().keySet());
+        LOG.info(this + "Activating with shardList " + shardList);
+        try {
+            zk.initialize(shardList);
+            zk.watchShardList(this);
+        } catch (Exception e) {
+            LOG.error(this + " something went wrong while initializing Zookeeper shardList."
+                    + " Assuming it is unsafe to continue.", e);
+            throw new KinesisSpoutException(e);
+        }
+    }
+
     /* (non-Javadoc)
      * @see com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager#activate()
      */
@@ -102,20 +115,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     public void activate() {
         this.zk = new ZookeeperShardState(config);
         this.active = true;
-
-        // Ensure that the task can safely be activated
-        // This will take care of making sure the list is sorted too.
-        ImmutableList<String> shardList = ImmutableList.copyOf(shardListGetter.getShardList().keySet());
-        LOG.info(this + "Activating with shardList " + shardList);
-        try {
-            zk.initialize(shardList);
-            // Hook shardList watcher for the first time.
-            zk.watchShardList(this);
-        } catch (Exception e) {
-            LOG.error(this + " something went wrong while initializing Zookeeper shardList."
-                      + " Assuming it is unsafe to continue.", e);
-            throw new KinesisSpoutException(e);
-        }
+        initialize();
     }
 
     /* (non-Javadoc)
@@ -265,6 +265,8 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     // They are all synchronized on the instance of this class.
     @Override
     public synchronized void process(WatchedEvent event) {
+        LOG.debug(this + " watched event occurred: " + event);
+
         checkState(active, "Cannot process events if state is not active (a ZK"
                 + " connection is necessary).");
 
@@ -280,7 +282,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
             // Failure is fatal for the task (and it's been retried, so it's indicative of a
             // bigger Zookeeper/global state issue).
             LOG.error(this + " failure to re-attach event handler for ZK node "
-                      + event.getPath(), e);
+                    + event.getPath(), e);
             throw new KinesisSpoutException(e);
         }
 
@@ -288,55 +290,81 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
         // a reshard, and we need to sync with the state in ZK.
         if (event.getType() == EventType.NodeDataChanged && zk.isShardList(event.getPath())) {
             LOG.info(this + " detected change in shardList. Committing current shard state and "
-                     + "reinitializing spout task from ZK.");
-
+                    + "reinitializing spout task from ZK.");
             commitShardStates();
             bootstrapStateFromZookeeper();
         }
     }
 
+    /**
+     * Will re-initialize the shard list, causing the watcher to trigger and detect the change in the shard list.
+     */
+    public void handleReshard() {
+        initialize();
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-            .append("taskIndex", taskIndex)
-            .toString();
+                .append("taskIndex", taskIndex)
+                .toString();
     }
 
     // Recomputes shard assignment for the current task. Then, recreates the local shard state
     // and the getters from whatever data is in Zookeeper.
     private void bootstrapStateFromZookeeper() {
         ImmutableList<String> shardAssignment = getShardAssignment();
+        ImmutableList<IShardGetter> getters;
 
         // Task could not get an assignment (e.g. there are too many tasks for too few shards).
         if (shardAssignment.isEmpty()) {
-            this.shardStates = new HashMap<>();
-            this.getters = ImmutableList.of();
+            shardStates = new HashMap<String, LocalShardState>();
+            getters = ImmutableList.of();
         } else {
-            this.shardStates = makeLocalState(shardAssignment);
-            this.getters = makeGetters(shardAssignment);
+            updateLocalState(shardAssignment);
+            getters = makeGetters(shardAssignment);
         }
 
         this.currentGetter = Iterators.cycle(getters);
         LOG.info(this + " got getter assignment. Handling " + getters + ".");
     }
 
-    // Create the local shard state from Zookeeper.
-    private Map<String, LocalShardState> makeLocalState(ImmutableList<String> shardAssignment) {
-        Map<String, LocalShardState> state = new HashMap<>();
+    // Create/update the local shard state from Zookeeper.
+    private void updateLocalState(ImmutableList<String> shardAssignment) {
+        // first initialization of shardStates
+        if (shardStates == null) {
+            shardStates = new HashMap<String, LocalShardState>();
+        }
+        // remove shard state that we're not longer responsible for
+        Iterator<Entry<String, LocalShardState>> iter = shardStates.entrySet().iterator();
+        while (iter.hasNext()) {
+            Entry<String, LocalShardState> entry = iter.next();
+            final String shardId = entry.getKey();
+            if (!shardAssignment.contains(shardId)) {
+                LOG.info(this + " removing stale shard state for shard " + shardId);
+                iter.remove();
+            }
+        }
 
         for (final String shardId : shardAssignment) {
+            // first check for pre-existing shard state...
+            if (shardStates.containsKey(shardId)) {
+                final LocalShardState st = shardStates.get(shardId);
+                LOG.info(this + " keeping existing shard state for shard " + shardId + " with earliest inflight seqnum " + st.getEarliestInflightRecord());
+                continue;
+            }
+            // otherwise fallback to zk committed shard state
             String latestValidSeqNum;
             try {
                 latestValidSeqNum = zk.getLastCommittedSeqNum(shardId);
+                LOG.info(this + " fell back to zk record with seqnum (" + latestValidSeqNum + ") for shard " + shardId);
             } catch (Exception e) {
-                LOG.error(this + " could not retrieve last committed seqnum for " + shardId
-                          + " from ZooKeeper. Starting from default getter position.");
                 latestValidSeqNum = "";
+                LOG.error(this + " could not retrieve last committed seqnum for " + shardId
+                        + " from ZooKeeper. Starting from default getter position.");
             }
-            state.put(shardId, new LocalShardState(shardId, latestValidSeqNum, config.getRecordRetryLimit()));
+            shardStates.put(shardId, new LocalShardState(shardId, latestValidSeqNum, config.getRecordRetryLimit()));
         }
-
-        return state;
     }
 
     // Opens getters based on shard assignment and local shard state, and seeks them to seekToOnOpen.
@@ -346,16 +374,29 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
 
         final ImmutableList<IShardGetter> myGetters = getterBuilder.buildGetters(shardAssignment);
 
-        for (final IShardGetter getter: myGetters) {
+        for (final IShardGetter getter : myGetters) {
             final String shardId = getter.getAssociatedShard();
             final LocalShardState shardState = safeGetShardState(shardId);
 
             try {
-                if (shardState.getLatestValidSeqNum().isEmpty() && seekToOnOpen != null) {
-                    getter.seek(seekToOnOpen);
+                if (shardState.getEarliestInflightRecord() != null) {
+                    // seek getter to earliest inflight record
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(this + " seeking to early inflight " + shardState.getEarliestInflightRecord().getSequenceNumber());
+                    }
+                    getter.seek(ShardPosition.afterSequenceNumber(shardState.getEarliestInflightRecord().getSequenceNumber()));
                 } else if (!shardState.getLatestValidSeqNum().isEmpty()) {
-                    getter.seek(ShardPosition.afterSequenceNumber(
-                            shardState.getLatestValidSeqNum()));
+                    // we fell back to zk state, seek shard state to appropriate position
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(this + " seeking to committed " + shardState.getLatestValidSeqNum());
+                    }
+                    getter.seek(ShardPosition.afterSequenceNumber(shardState.getLatestValidSeqNum()));
+                } else if (seekToOnOpen != null) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(this + " seeking to default " + seekToOnOpen);
+                    }
+                    // no pre-existing shard state or valid zk state, seek to default
+                    getter.seek(seekToOnOpen);
                 }
             } catch (InvalidSeekPositionException e) {
                 LOG.error(this + " tried to seek getter " + getter + " to an invalid position.", e);
@@ -378,7 +419,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
             LOG.info(this + " Got shardList: " + shardList);
         } catch (Exception e) {
             LOG.error(this + " could not compute shard assigment: could not retrieve shard list"
-                      + " from ZK.", e);
+                    + " from ZK.", e);
             throw new KinesisSpoutException(e);
         }
 
@@ -393,7 +434,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     private LocalShardState safeGetShardState(final String shardId) {
         final LocalShardState st = shardStates.get(shardId);
         checkNotNull(st, "Shard state map inconsistent with shard assignment (could not get"
-                         + " shardId=" + shardId + ").");
+                + " shardId=" + shardId + ").");
         return st;
     }
 }

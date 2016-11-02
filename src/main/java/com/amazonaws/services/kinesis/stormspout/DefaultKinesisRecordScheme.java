@@ -15,12 +15,11 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
+import com.amazonaws.services.kinesis.model.Record;
+import org.apache.storm.tuple.Fields;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import backtype.storm.tuple.Fields;
-
-import com.amazonaws.services.kinesis.model.Record;
 
 /**
  * Default scheme for emitting Kinesis records as tuples. It emits a tuple of (partitionKey, record).

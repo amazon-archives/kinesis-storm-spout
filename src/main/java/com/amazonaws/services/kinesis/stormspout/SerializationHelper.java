@@ -15,17 +15,16 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 
 /**
  * Utility class for serialization and deserialization.
@@ -34,12 +33,14 @@ class SerializationHelper {
     private static final Logger LOG = LoggerFactory.getLogger(SerializationHelper.class);
 
     // Utility class should not be instantiated.
-    private SerializationHelper() { }
+    private SerializationHelper() {
+    }
 
     /**
      * If the ByteBuffer is backed by an array, return this array. Otherwise, dump the ByteBuffer
      * to a byte array (the latter is an expensive operation).
-     * @param buf  buffer to read from.
+     *
+     * @param buf buffer to read from.
      * @return data or copy of data in buf as a byte array.
      */
     public static byte[] copyData(ByteBuffer buf) {
@@ -59,7 +60,8 @@ class SerializationHelper {
         final ByteArrayOutputStream os = new ByteArrayOutputStream();
         final Output output = new Output(os);
 
-        kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
+        // Better initialization to keep a fallback and prevent crash
+        ((Kryo.DefaultInstantiatorStrategy) kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(new StdInstantiatorStrategy());
         kryo.writeClassAndObject(output, obj);
 
         output.flush();
@@ -70,7 +72,9 @@ class SerializationHelper {
         final Kryo kryo = new Kryo();
         final Input input = new Input(new ByteArrayInputStream(ser));
 
-        kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
+        // Better initialization to keep a fallback and prevent crash
+        ((Kryo.DefaultInstantiatorStrategy) kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(new StdInstantiatorStrategy());
+
         return kryo.readClassAndObject(input);
     }
 }

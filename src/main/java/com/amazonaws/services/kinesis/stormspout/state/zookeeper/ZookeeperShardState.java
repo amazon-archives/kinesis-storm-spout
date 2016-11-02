@@ -15,10 +15,16 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
-import java.io.IOException;
-import java.util.Random;
-import java.util.concurrent.Callable;
-
+import com.amazonaws.services.kinesis.stormspout.KinesisSpoutConfig;
+import com.amazonaws.services.kinesis.stormspout.exceptions.KinesisSpoutException;
+import com.amazonaws.services.kinesis.stormspout.state.zookeeper.NodeFunction.Mod;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
+import org.apache.curator.RetryLoop;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
@@ -26,16 +32,8 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.amazonaws.services.kinesis.stormspout.KinesisSpoutConfig;
-import com.amazonaws.services.kinesis.stormspout.exceptions.KinesisSpoutException;
-import com.amazonaws.services.kinesis.stormspout.state.zookeeper.NodeFunction.Mod;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
-import com.netflix.curator.RetryLoop;
-import com.netflix.curator.framework.CuratorFramework;
-import com.netflix.curator.framework.CuratorFrameworkFactory;
-import com.netflix.curator.retry.ExponentialBackoffRetry;
+import java.util.Random;
+import java.util.concurrent.Callable;
 
 /**
  * Handles communication with Zookeeper and methods specific to the spout for saving/restoring
@@ -55,7 +53,8 @@ class ZookeeperShardState {
 
     /**
      * Create and configure the ZK sync object with the KinesisSpoutConfig.
-     * @param config  the configuration for the spout.
+     *
+     * @param config the configuration for the spout.
      */
     ZookeeperShardState(final KinesisSpoutConfig config) {
         this.config = config;
@@ -64,18 +63,19 @@ class ZookeeperShardState {
         try {
             zk = CuratorFrameworkFactory.newClient(config.getZookeeperConnectionString(),
                     new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_NUM_RETRIES));
-        } catch (IOException e) {
+            zk.start();
+
+        } catch (Exception e) {
             LOG.error("Could not connect to ZooKeeper", e);
             throw new KinesisSpoutException(e);
         }
-        zk.start();
     }
 
     /**
      * Initialize the shardList in ZK. This is called by every spout task on activate(), and ensures
      * that the shardList is up to date and correct.
      *
-     * @param shards  list of shards (output of DescribeStream).
+     * @param shards list of shards (output of DescribeStream).
      * @throws Exception
      */
     void initialize(final ImmutableList<String> shards) throws Exception {
@@ -96,9 +96,17 @@ class ZookeeperShardState {
 
             @Override
             public Mod<byte[]> apply(byte[] x) {
-                // At this point, we don't support resharding. We assume the shard list is valid if one exists.
-                LOG.info("ShardList already initialized in Zookeeper. Assuming it is valid.");
-                return Mod.noModification();
+                // Implies that every spout will attempt to update the ZK shardList when a reshard occurs.
+                LOG.info(this + " Re-initialization of shardList: " + shards);
+                ShardListV0 shardList = new ShardListV0(shards);
+                ObjectMapper objectMapper = new ObjectMapper();
+                byte[] data;
+                try {
+                    data = objectMapper.writeValueAsBytes(shardList);
+                } catch (JsonProcessingException e) {
+                    throw new KinesisSpoutException("Unable to serialize shardList " + shardList, e);
+                }
+                return Mod.modification(data);
             }
         };
 
@@ -118,8 +126,8 @@ class ZookeeperShardState {
     /**
      * Commit the checkpoint sequence number for a shard to Zookeeper.
      *
-     * @param  shardId  shard to commit to.
-     * @param  seqNum  sequence number to commit.
+     * @param shardId shard to commit to.
+     * @param seqNum  sequence number to commit.
      * @throws Exception
      */
     void commitSeqNum(final String shardId, final String seqNum) throws Exception {
@@ -132,7 +140,7 @@ class ZookeeperShardState {
     /**
      * Get the last committed sequence number for the shard from Zookeeper.
      *
-     * @param  shardId  shard to read from.
+     * @param shardId shard to read from.
      * @return a sequence number if the state exists, empty string otherwise.
      * @throws Exception
      */
@@ -162,7 +170,7 @@ class ZookeeperShardState {
 
     /**
      * Set a watcher for the shardList.
-     * 
+     *
      * @param callback Zookeeper watcher to be set on the shard list.
      * @throws Exception
      */
@@ -180,7 +188,7 @@ class ZookeeperShardState {
 
     /**
      * Closes the connection to ZK.
-     * 
+     *
      * @throws InterruptedException
      */
     void close() throws InterruptedException {
@@ -190,9 +198,9 @@ class ZookeeperShardState {
     /**
      * Optimistic concurrency scheme for tryAtomicUpdate. Try to update, and keep trying
      * until successful.
-     * 
+     *
      * @param pathSuffix suffix to use to build path in ZooKeeper.
-     * @param f function used to initialize the node, or transform the data already there.
+     * @param f          function used to initialize the node, or transform the data already there.
      * @throws Exception
      */
     private void atomicUpdate(final String pathSuffix, final NodeFunction f) throws Exception {
@@ -207,7 +215,7 @@ class ZookeeperShardState {
             });
             Thread.sleep(BASE_OPTIMISTIC_RETRY_TIME_MS
                     + rand.nextInt(BASE_OPTIMISTIC_RETRY_TIME_MS));
-        } while(!done);
+        } while (!done);
     }
 
     private byte[] get(final String pathSuffix) throws Exception {
@@ -247,11 +255,11 @@ class ZookeeperShardState {
     /**
      * Try to atomically update a node in ZooKeeper, creating it if it doesn't exist. This is
      * meant to be used within an optimistic concurrency model.
-     * 
+     *
      * @param pathSuffix suffix to use to build path in ZooKeeper.
-     * @param f function used to initialize the node, or transform the data already there.
+     * @param f          function used to initialize the node, or transform the data already there.
      * @return true if node was created/updated, false if a concurrent modification occurred
-     *         and succeeded while trying to update/create the node.
+     * and succeeded while trying to update/create the node.
      * @throws Exception
      */
     private boolean tryAtomicUpdate(final String pathSuffix, final NodeFunction f) throws Exception {
@@ -260,8 +268,8 @@ class ZookeeperShardState {
 
         if (stat == null) {
             try {
-                zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
-                  .forPath(path, f.initialize());
+                LOG.info("creating ZK data at path " + path);
+                zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path, f.initialize());
             } catch (KeeperException.NodeExistsException e) {
                 LOG.debug("Concurrent creation of " + path + ", retrying", e);
                 return false;
@@ -271,6 +279,7 @@ class ZookeeperShardState {
 
             if (newVal.hasModification()) {
                 try {
+                    LOG.info("updating ZK data at path " + path);
                     zk.setData().withVersion(stat.getVersion()).forPath(path, newVal.get());
                 } catch (KeeperException.BadVersionException e) {
                     LOG.debug("Concurrent update to " + path + ", retrying.", e);
@@ -284,6 +293,6 @@ class ZookeeperShardState {
 
     private String buildZookeeperPath(final String suffix) {
         return "/" + config.getZookeeperPrefix() + "/" + config.getTopologyName() + "/"
-               +  config.getStreamName() + "/" + suffix;
+                + config.getStreamName() + "/" + suffix;
     }
 }
