@@ -96,17 +96,9 @@ class ZookeeperShardState {
 
             @Override
             public Mod<byte[]> apply(byte[] x) {
-                // Implies that every spout will attempt to update the ZK shardList when a reshard occurs.
-                LOG.info(this + " Re-initialization of shardList: " + shards);
-                ShardListV0 shardList = new ShardListV0(shards);
-                ObjectMapper objectMapper = new ObjectMapper();
-                byte[] data;
-                try {
-                    data = objectMapper.writeValueAsBytes(shardList);
-                } catch (JsonProcessingException e) {
-                    throw new KinesisSpoutException("Unable to serialize shardList " + shardList, e);
-                }
-                return Mod.modification(data);
+                // At this point, we don't support resharding. We assume the shard list is valid if one exists.
+                LOG.info("ShardList already initialized in Zookeeper. Assuming it is valid.");
+                return Mod.noModification();
             }
         };
 
@@ -268,8 +260,8 @@ class ZookeeperShardState {
 
         if (stat == null) {
             try {
-                LOG.info("creating ZK data at path " + path);
-                zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path, f.initialize());
+                zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
+                        .forPath(path, f.initialize());
             } catch (KeeperException.NodeExistsException e) {
                 LOG.debug("Concurrent creation of " + path + ", retrying", e);
                 return false;
@@ -279,7 +271,7 @@ class ZookeeperShardState {
 
             if (newVal.hasModification()) {
                 try {
-                    LOG.info("updating ZK data at path " + path);
+                    LOG.debug("updating ZK data at path " + path);
                     zk.setData().withVersion(stat.getVersion()).forPath(path, newVal.get());
                 } catch (KeeperException.BadVersionException e) {
                     LOG.debug("Concurrent update to " + path + ", retrying.", e);

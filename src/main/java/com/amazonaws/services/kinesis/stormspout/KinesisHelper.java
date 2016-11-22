@@ -163,8 +163,7 @@ class KinesisHelper implements IShardListGetter {
 
         for (Shard s : streamShards) {
             currShard = s.getShardId();
-            final boolean open = s.getSequenceNumberRange().getEndingSequenceNumber() == null;
-            spoutShards.put(s.getShardId(), new ShardInfo(s.getShardId(), open));
+            spoutShards.put(s.getShardId(), new ShardInfo(s.getShardId()));
 
             if (s.getParentShardId() != null && s.getAdjacentParentShardId() != null) {
                 // It's a merge. Set both parents of the merge to merge into this shard.
