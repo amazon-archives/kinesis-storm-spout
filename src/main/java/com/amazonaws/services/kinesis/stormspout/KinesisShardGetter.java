@@ -150,8 +150,6 @@ class KinesisShardGetter implements IShardGetter {
         request.setShardId(shardId);
         request.setShardIteratorType(iteratorType);
 
-        LOG.debug("<seek> streamName = {}, shardId = {}, seqNum = {}", streamName, shardId, seqNum);
-
         // SeqNum is only set on {AT, AFTER}_SEQUENCE_NUMBER, so this is safe.
         if (seqNum != null) {
             request.setStartingSequenceNumber(seqNum);
