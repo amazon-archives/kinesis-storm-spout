@@ -215,6 +215,20 @@ class InflightRecordTracker {
         return recordToRetry;
     }
 
+    Record getInflightRecord(final String sequenceNumber) {
+        RecordNode node = seqNumToRecordInfoMap.get(sequenceNumber);
+        LOG.info(this + " getInflightRecord: node = " + node + ", sequenceNumber = " + sequenceNumber + ", shardId = "
+                + shardId + ", checkpointSequenceNumber = " + checkpointSequenceNumber);
+        Record record = node.getRecord();
+        return record;
+    }
+
+    Record getEarliestInflightRecord() {
+        if (recordNodeList.size() > 0)
+            return recordNodeList.getFirst().getRecord();
+        return null;
+    }
+
     /**
      * Note: This has package level access solely for testing purposes.
      *

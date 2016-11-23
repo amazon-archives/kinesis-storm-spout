@@ -88,6 +88,14 @@ class LocalShardState {
         return tracker.recordToRetry();
     }
 
+    Record getInflightRecord(final String seqNum) {
+        return tracker.getInflightRecord(seqNum);
+    }
+
+    Record getEarliestInflightRecord() {
+        return tracker.getEarliestInflightRecord();
+    }
+
     /**
      * @return true if there are sequence numbers that need to be retried.
      */

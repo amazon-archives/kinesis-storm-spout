@@ -26,6 +26,7 @@ import java.util.List;
  */
 class ShardInfo {
     private final String shardId;
+    private final boolean open;
     private String mergesInto;
     private List<String> splitsInto;
 
@@ -34,8 +35,9 @@ class ShardInfo {
      *
      * @param shardId the Kinesis shard ID.
      */
-    ShardInfo(String shardId) {
+    ShardInfo(String shardId, boolean open) {
         this.shardId = shardId;
+        this.open = open;
         this.mergesInto = "";
         this.splitsInto = new ArrayList<>(2);
     }
@@ -45,6 +47,13 @@ class ShardInfo {
      */
     String getShardId() {
         return shardId;
+    }
+
+    /**
+     * @return true iff the shard state is OPEN.
+     */
+    boolean getShardOpen() {
+        return open;
     }
 
     /**

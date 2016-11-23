@@ -16,6 +16,7 @@
 package com.amazonaws.services.kinesis.stormspout;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 
 /**
  * Builds KinesisShardGetters.
@@ -47,12 +48,15 @@ class KinesisShardGetterBuilder implements IShardGetterBuilder {
 
     @Override
     public ImmutableList<IShardGetter> buildGetters(ImmutableList<String> shardAssignment) {
-        ImmutableList.Builder<IShardGetter> builder = new ImmutableList.Builder<>();
+        ImmutableList.Builder<IShardGetter> builder = new ImmutableList.Builder<IShardGetter>();
+        ImmutableSortedMap<String, ShardInfo> shards = helper.getShardList();
 
-        for (String shard : shardAssignment) {
-            builder.add(new BufferedGetter(new KinesisShardGetter(streamName, shard, helper.getSharedkinesisClient()),
-                    maxRecordsPerCall,
-                    emptyRecordListBackoffMillis));
+        for (String shardId : shardAssignment) {
+            KinesisShardGetter getter = new KinesisShardGetter(
+                    streamName,
+                    shards.get(shardId),
+                    helper.getSharedkinesisClient());
+            builder.add(new BufferedGetter(getter, maxRecordsPerCall, emptyRecordListBackoffMillis));
         }
 
         return builder.build();

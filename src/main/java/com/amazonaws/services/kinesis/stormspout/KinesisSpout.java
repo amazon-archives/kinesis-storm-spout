@@ -18,7 +18,6 @@ package com.amazonaws.services.kinesis.stormspout;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.kinesis.model.Record;
-import com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager;
 import com.amazonaws.services.kinesis.stormspout.state.zookeeper.ZookeeperStateManager;
 import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -48,15 +47,15 @@ public class KinesisSpout implements IRichSpout, Serializable {
 
     // Initialized before open
     private final InitialPositionInStream initialPosition;
+    private final KinesisHelper shardListGetter;
     private final KinesisSpoutConfig config;
-    private final IShardListGetter shardListGetter;
+    private final long emptyRecordListSleepTimeMillis = 5L;
     private final IShardGetterBuilder getterBuilder;
-    private long emptyRecordListSleepTimeMillis = 5L;
 
     // Initialized on open
     private transient SpoutOutputCollector collector;
     private transient TopologyContext context;
-    private transient IKinesisSpoutStateManager stateManager;
+    private transient ZookeeperStateManager stateManager;
     private transient long lastCommitTime;
 
     /**
@@ -82,20 +81,6 @@ public class KinesisSpout implements IRichSpout, Serializable {
                         helper,
                         config.getMaxRecordsPerCall(),
                         config.getEmptyRecordListBackoffMillis());
-        this.initialPosition = config.getInitialPositionInStream();
-    }
-
-    /**
-     * @param config          Spout configuration.
-     * @param shardListGetter Used to list the shards in the stream.
-     * @param getterBuilder   Used for creating shard getters for a task.
-     */
-    KinesisSpout(final KinesisSpoutConfig config,
-                 final IShardListGetter shardListGetter,
-                 final IShardGetterBuilder getterBuilder) {
-        this.config = config;
-        this.shardListGetter = shardListGetter;
-        this.getterBuilder = getterBuilder;
         this.initialPosition = config.getInitialPositionInStream();
     }
 
@@ -172,9 +157,14 @@ public class KinesisSpout implements IRichSpout, Serializable {
                 }
                 isRetry = true;
             } else {
-                final ImmutableList<Record> records = getter.getNext(1).getRecords();
-                if ((records != null) && (!records.isEmpty())) {
-                    rec = records.get(0);
+                final Records records = getter.getNext(1);
+                final ImmutableList<Record> recordList = records.getRecords();
+                if ((recordList != null) && (!recordList.isEmpty())) {
+                    rec = recordList.get(0);
+                }
+                if (records.isReshard()) {
+                    LOG.info(this + " detected reshard event for shard " + currentShardId);
+                    stateManager.handleReshard();
                 }
             }
 
@@ -182,10 +172,8 @@ public class KinesisSpout implements IRichSpout, Serializable {
                 // Copy record (ByteBuffer.duplicate()) so bolts in the same JVM don't affect the object (e.g. retries)
                 Record recordToEmit = copyRecord(rec);
                 List<Object> tuple = config.getScheme().deserialize(recordToEmit);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(this + " emitting record with seqnum " + recordToEmit.getSequenceNumber() + " from shard "
-                            + currentShardId + " with data: " + tuple);
-                }
+                LOG.info(this + " emitting record with seqnum " + recordToEmit.getSequenceNumber() + " from shard "
+                        + currentShardId + " with data: " + tuple);
                 collector.emit(tuple, MessageIdUtil.constructMessageId(currentShardId, recordToEmit.getSequenceNumber()));
                 stateManager.emit(currentShardId, recordToEmit, isRetry);
             } else {

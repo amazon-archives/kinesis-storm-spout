@@ -15,9 +15,9 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
-
 import java.io.Serializable;
+
+import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 
 /**
  * Position into a Kinesis shard.
@@ -65,7 +65,7 @@ public class ShardPosition implements Serializable {
 
     /**
      * Depending on the return value, it might also be necessary to read the sequence number.
-     *
+     * 
      * @return the position to seek to.
      */
     public Position getPosition() {
@@ -74,7 +74,7 @@ public class ShardPosition implements Serializable {
 
     /**
      * Optional argument to ShardPosition, only used with {AT, AFTER}_SEQUENCE_NUMBER.
-     *
+     * 
      * @return the sequence number to seek at/after.
      */
     public String getSequenceNum() {
@@ -90,21 +90,13 @@ public class ShardPosition implements Serializable {
      * Position in shard.
      */
     public static enum Position {
-        /**
-         * TIME_ZERO or TRIM_HORIZON.
-         */
+        /** TIME_ZERO or TRIM_HORIZON. */
         TRIM_HORIZON,
-        /**
-         * AT_SEQUENCE_NUMBER.
-         */
+        /** AT_SEQUENCE_NUMBER. */
         AT_SEQUENCE_NUMBER,
-        /**
-         * AFTER_SEQUENCE_NUMBER.
-         */
+        /** AFTER_SEQUENCE_NUMBER. */
         AFTER_SEQUENCE_NUMBER,
-        /**
-         * LATEST.
-         */
+        /** LATEST. */
         LATEST;
     }
 }
