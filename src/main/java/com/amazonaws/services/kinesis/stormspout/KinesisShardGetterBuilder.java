@@ -16,6 +16,7 @@
 package com.amazonaws.services.kinesis.stormspout;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 
 /**
  * Builds KinesisShardGetters.
@@ -31,14 +32,14 @@ class KinesisShardGetterBuilder implements IShardGetterBuilder {
 
     /**
      * Constructor.
-     * 
+     *
      * @param streamName Kinesis stream to create the getters in.
-     * @param helper Used to get the AmazonKinesisClient object (used by the getters).
+     * @param helper     Used to get the AmazonKinesisClient object (used by the getters).
      */
     public KinesisShardGetterBuilder(final String streamName,
-            final KinesisHelper helper,
-            final int maxRecordsPerCall,
-            final long emptyRecordListBackoffMillis) {
+                                     final KinesisHelper helper,
+                                     final int maxRecordsPerCall,
+                                     final long emptyRecordListBackoffMillis) {
         this.streamName = streamName;
         this.helper = helper;
         this.maxRecordsPerCall = maxRecordsPerCall;
@@ -47,12 +48,15 @@ class KinesisShardGetterBuilder implements IShardGetterBuilder {
 
     @Override
     public ImmutableList<IShardGetter> buildGetters(ImmutableList<String> shardAssignment) {
-        ImmutableList.Builder<IShardGetter> builder = new ImmutableList.Builder<>();
+        ImmutableList.Builder<IShardGetter> builder = new ImmutableList.Builder<IShardGetter>();
+        ImmutableSortedMap<String, ShardInfo> shards = helper.getShardList();
 
-        for (String shard : shardAssignment) {
-            builder.add(new BufferedGetter(new KinesisShardGetter(streamName, shard, helper.getSharedkinesisClient()),
-                    maxRecordsPerCall,
-                    emptyRecordListBackoffMillis));
+        for (String shardId : shardAssignment) {
+            KinesisShardGetter getter = new KinesisShardGetter(
+                    streamName,
+                    shards.get(shardId),
+                    helper.getSharedkinesisClient());
+            builder.add(new BufferedGetter(getter, maxRecordsPerCall, emptyRecordListBackoffMillis));
         }
 
         return builder.build();

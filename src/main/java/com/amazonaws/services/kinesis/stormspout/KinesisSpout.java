@@ -15,68 +15,66 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.services.kinesis.model.Record;
+import com.amazonaws.services.kinesis.stormspout.state.zookeeper.ZookeeperStateManager;
+import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.storm.Config;
+import org.apache.storm.spout.SpoutOutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.IRichSpout;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import backtype.storm.Config;
-import backtype.storm.spout.SpoutOutputCollector;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.topology.IRichSpout;
-import backtype.storm.topology.OutputFieldsDeclarer;
-
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.kinesis.model.Record;
-import com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager;
-import com.amazonaws.services.kinesis.stormspout.state.zookeeper.ZookeeperStateManager;
-import com.google.common.collect.ImmutableList;
-
 /**
  * Storm spout for Amazon Kinesis. The spout fetches data from Kinesis and emits a tuple for each data record.
- * 
+ * <p>
  * Note: every spout task handles a distinct set of shards.
  */
 public class KinesisSpout implements IRichSpout, Serializable {
     private static final long serialVersionUID = 7707829996758189836L;
     private static final Logger LOG = LoggerFactory.getLogger(KinesisSpout.class);
-
-    private final InitialPositionInStream initialPosition;
+    public static final String TOPOLOGY_NAME_MDC_KEY = "component";
 
     // Initialized before open
+    private final InitialPositionInStream initialPosition;
+    private final KinesisHelper shardListGetter;
     private final KinesisSpoutConfig config;
-    private final IShardListGetter shardListGetter;
+    private final long emptyRecordListSleepTimeMillis = 5L;
     private final IShardGetterBuilder getterBuilder;
-    private long emptyRecordListSleepTimeMillis = 5L;
 
     // Initialized on open
     private transient SpoutOutputCollector collector;
     private transient TopologyContext context;
-    private transient IKinesisSpoutStateManager stateManager;
+    private transient ZookeeperStateManager stateManager;
     private transient long lastCommitTime;
 
     /**
      * Constructs an instance of the spout with just enough data to bootstrap the state from.
      * Construction done here is common to all spout tasks, whereas the IKinesisSpoutStateManager created
      * in activate() is task specific.
-     * 
-     * @param config Spout configuration.
+     *
+     * @param config              Spout configuration.
      * @param credentialsProvider Used when making requests to Kinesis.
      * @param clientConfiguration Client configuration used when making calls to Kinesis.
      */
     public KinesisSpout(KinesisSpoutConfig config,
-            AWSCredentialsProvider credentialsProvider,
-            ClientConfiguration clientConfiguration) {
+                        AWSCredentialsProvider credentialsProvider,
+                        ClientConfiguration clientConfiguration) {
         this.config = config;
         KinesisHelper helper = new KinesisHelper(config.getStreamName(),
-                        credentialsProvider,
-                        clientConfiguration,
-                        config.getRegion());
+                credentialsProvider,
+                clientConfiguration,
+                config.getRegion());
         this.shardListGetter = helper;
         this.getterBuilder =
                 new KinesisShardGetterBuilder(config.getStreamName(),
@@ -86,35 +84,23 @@ public class KinesisSpout implements IRichSpout, Serializable {
         this.initialPosition = config.getInitialPositionInStream();
     }
 
-    /**
-     * @param config Spout configuration.
-     * @param shardListGetter Used to list the shards in the stream.
-     * @param getterBuilder Used for creating shard getters for a task.
-     */
-    KinesisSpout(final KinesisSpoutConfig config,
-            final IShardListGetter shardListGetter,
-            final IShardGetterBuilder getterBuilder) {
-        this.config = config;
-        this.shardListGetter = shardListGetter;
-        this.getterBuilder = getterBuilder;
-        this.initialPosition = config.getInitialPositionInStream();
-    }
-
     @Override
     public void open(@SuppressWarnings("rawtypes") final Map conf,
-            final TopologyContext spoutContext,
-            final SpoutOutputCollector spoutCollector) {
+                     final TopologyContext spoutContext,
+                     final SpoutOutputCollector spoutCollector) {
         config.setTopologyName((String) conf.get(Config.TOPOLOGY_NAME));
 
         this.context = spoutContext;
         this.collector = spoutCollector;
         this.stateManager = new ZookeeperStateManager(config, shardListGetter, getterBuilder, initialPosition);
+        MDC.put(TOPOLOGY_NAME_MDC_KEY, (String) conf.get(Config.TOPOLOGY_NAME));
         LOG.info(this + " open() called with topoConfig task index " + spoutContext.getThisTaskIndex()
                 + " for processing stream " + config.getStreamName());
     }
 
     @Override
     public void close() {
+        MDC.remove(TOPOLOGY_NAME_MDC_KEY);
     }
 
     @Override
@@ -162,7 +148,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
             String currentShardId = getter.getAssociatedShard();
             Record rec = null;
             boolean isRetry = false;
-            
+
             if (stateManager.shouldRetry(currentShardId)) {
                 rec = stateManager.recordToRetry(currentShardId);
                 if (LOG.isDebugEnabled()) {
@@ -171,9 +157,14 @@ public class KinesisSpout implements IRichSpout, Serializable {
                 }
                 isRetry = true;
             } else {
-                final ImmutableList<Record> records = getter.getNext(1).getRecords();
-                if ((records != null) && (!records.isEmpty())) {
-                    rec = records.get(0);
+                final Records records = getter.getNext(1);
+                final ImmutableList<Record> recordList = records.getRecords();
+                if ((recordList != null) && (!recordList.isEmpty())) {
+                    rec = recordList.get(0);
+                }
+                if (records.isReshard()) {
+                    LOG.info(this + " detected reshard event for shard " + currentShardId);
+                    stateManager.handleReshard();
                 }
             }
 
@@ -181,11 +172,8 @@ public class KinesisSpout implements IRichSpout, Serializable {
                 // Copy record (ByteBuffer.duplicate()) so bolts in the same JVM don't affect the object (e.g. retries)
                 Record recordToEmit = copyRecord(rec);
                 List<Object> tuple = config.getScheme().deserialize(recordToEmit);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(this + " emitting record with seqnum " + recordToEmit.getSequenceNumber() + " from shard "
-                            + currentShardId + ".");
-                }
-
+                LOG.info(this + " emitting record with seqnum " + recordToEmit.getSequenceNumber() + " from shard "
+                        + currentShardId + " with data: " + tuple);
                 collector.emit(tuple, MessageIdUtil.constructMessageId(currentShardId, recordToEmit.getSequenceNumber()));
                 stateManager.emit(currentShardId, recordToEmit, isRetry);
             } else {
@@ -212,7 +200,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
     /**
      * Creates a copy of the record so we don't get interference from bolts that execute in the same JVM.
      * We invoke ByteBuffer.duplicate() so the ByteBuffer state is decoupled.
-     * 
+     *
      * @param record Kinesis record
      * @return Copied record.
      */
@@ -221,6 +209,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
         duplicate.setPartitionKey(record.getPartitionKey());
         duplicate.setSequenceNumber(record.getSequenceNumber());
         duplicate.setData(record.getData().duplicate());
+        duplicate.setApproximateArrivalTimestamp(record.getApproximateArrivalTimestamp());
         return duplicate;
     }
 

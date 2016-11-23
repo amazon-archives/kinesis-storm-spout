@@ -15,24 +15,24 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
+import com.amazonaws.services.kinesis.model.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.amazonaws.services.kinesis.model.Record;
-
 // @formatter:off
+
 /**
  * This class helps track in-flight records/tuples so we can provide record level ack/fail semantics,
  * while fetching records from Kinesis in batches. This class computes and tracks the checkpoint sequence number
  * based on messages that have been acked, failed, or are inflight.
  * We will checkpoint at the highest sequence number for a record which has been acked or retried up to the retry limit.
- * 
+ * <p>
  * We temporarily buffer records which have not been acked or exhausted retries, so we can re-emit them upon failure
  * without having to refetch them from Kinesis.
  * Since acks/fails can arrive in an order different from the order in which the records were
@@ -41,13 +41,13 @@ import com.amazonaws.services.kinesis.model.Record;
  * acks in the order [125, 101, 132]. When we get the ack for 125, we keep keep it around. When we get an ack for 101,
  * we remove both 101 and 125 and set checkpointSequenceNumber to 125. When we get the ack for 132, we remove it and
  * set the checkpointSequenceNumber to 132.
- * 
+ * <p>
  * Here's the table with info on processing acks. We maintain an ordered list of records (asc seq num).
  * In the table below we describe how we process an ack for a ("current") record based on the status of the previous
  * and next records in the ordered list (none means there is no previous/next record, keep means we don't delete
  * the current record).
- * 
- * 
+ * <p>
+ * <p>
  * +---------+-------------------------------+-------------------------------+-------------------------------+
  * |Next---> |                               |                               |                               |
  * |Previous |             acked             |            pending            |           none                |
@@ -61,7 +61,6 @@ import com.amazonaws.services.kinesis.model.Record;
  * | none    | delete, delete next, and set  | delete and advance checkpoint | delete and advance checkpoint |
  * |         | checkpoint to seq num of next | to seq num of current record  | to seq num of current record  |
  * +---------+-------------------------------+-------------------------------+-------------------------------+
- * 
  */
 // @formatter:on
 class InflightRecordTracker {
@@ -123,7 +122,7 @@ class InflightRecordTracker {
             }
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Shard " + shardId + ": Recorded emit for seq num " + sequenceNumber + ", isRetry = " + isRetry
-                        + ", retryNum = " + retryNum);       
+                        + ", retryNum = " + retryNum);
             }
         } else {
             if (LOG.isDebugEnabled()) {
@@ -216,9 +215,23 @@ class InflightRecordTracker {
         return recordToRetry;
     }
 
+    Record getInflightRecord(final String sequenceNumber) {
+        RecordNode node = seqNumToRecordInfoMap.get(sequenceNumber);
+        LOG.info(this + " getInflightRecord: node = " + node + ", sequenceNumber = " + sequenceNumber + ", shardId = "
+                + shardId + ", checkpointSequenceNumber = " + checkpointSequenceNumber);
+        Record record = node.getRecord();
+        return record;
+    }
+
+    Record getEarliestInflightRecord() {
+        if (recordNodeList.size() > 0)
+            return recordNodeList.getFirst().getRecord();
+        return null;
+    }
+
     /**
      * Note: This has package level access solely for testing purposes.
-     * 
+     *
      * @return List of in-flight records
      */
     RecordNodeList getRecordNodeList() {
@@ -227,7 +240,7 @@ class InflightRecordTracker {
 
     /**
      * Note: This method has package level access solely for testing purposes.
-     * 
+     *
      * @return SequenceNumber->RecordNode map of in-flight records.
      */
     Map<String, RecordNode> getSequenceNumberToRecordNodeMap() {
@@ -236,7 +249,7 @@ class InflightRecordTracker {
 
     /**
      * Note: This method has package level access solely for testing purposes.
-     * 
+     *
      * @return Queue of records to retry
      */
     Queue<String> getRetryQueue() {
@@ -330,11 +343,11 @@ class InflightRecordTracker {
 
         /**
          * Adds record to the end of the list.
-         * 
+         *
          * @param record Record will be added to end of the list
          * @return Newly added node
          * @throws IllegalArgumentException Thrown if the sequence number of the record is lower than the (current) last
-         *         node of the list
+         *                                  node of the list
          */
         RecordNode addToList(Record record) {
             RecordNode node = new RecordNode(record);

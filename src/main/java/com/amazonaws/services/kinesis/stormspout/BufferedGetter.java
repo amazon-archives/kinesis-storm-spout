@@ -15,14 +15,13 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import java.util.Iterator;
-
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
-
 import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.exceptions.InvalidSeekPositionException;
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+import java.util.Iterator;
 
 /**
  * Allows users to do efficient getter.getNext(1) calls in exchange for maybe pulling
@@ -40,27 +39,27 @@ class BufferedGetter implements IShardGetter {
 
     /**
      * Creates a (shard) getter that buffers records.
-     * 
-     * @param underlyingGetter Unbuffered shard getter.
-     * @param maxBufferSize Max number of records to fetch from the underlying getter.
+     *
+     * @param underlyingGetter             Unbuffered shard getter.
+     * @param maxBufferSize                Max number of records to fetch from the underlying getter.
      * @param emptyRecordListBackoffMillis Backoff time between GetRecords calls if previous call fetched no records.
      */
     public BufferedGetter(final IShardGetter underlyingGetter, final int maxBufferSize, final long emptyRecordListBackoffMillis) {
         this(underlyingGetter, maxBufferSize, emptyRecordListBackoffMillis, new TimeProvider());
     }
-    
+
     /**
      * Used for unit testing.
-     * 
-     * @param underlyingGetter Unbuffered shard getter
-     * @param maxBufferSize Max number of records to fetch from the underlying getter
+     *
+     * @param underlyingGetter             Unbuffered shard getter
+     * @param maxBufferSize                Max number of records to fetch from the underlying getter
      * @param emptyRecordListBackoffMillis Backoff time between GetRecords calls if previous call fetched no records.
-     * @param timeProvider Useful for testing timing based behavior (e.g. backoff)
+     * @param timeProvider                 Useful for testing timing based behavior (e.g. backoff)
      */
     BufferedGetter(final IShardGetter underlyingGetter,
-            final int maxBufferSize,
-            final long emptyRecordListBackoffMillis,
-            final TimeProvider timeProvider) {
+                   final int maxBufferSize,
+                   final long emptyRecordListBackoffMillis,
+                   final TimeProvider timeProvider) {
         this.getter = underlyingGetter;
         this.maxBufferSize = maxBufferSize;
         this.emptyRecordListBackoffTime = emptyRecordListBackoffMillis;
@@ -72,7 +71,7 @@ class BufferedGetter implements IShardGetter {
         ensureBuffered();
 
         if (!it.hasNext() && buffer.isEndOfShard()) {
-            return new Records(ImmutableList.<Record> of(), true);
+            return new Records(ImmutableList.<Record>of(), true, buffer.isReshard());
         }
 
         ImmutableList.Builder<Record> recs = new ImmutableList.Builder<>();
@@ -94,7 +93,7 @@ class BufferedGetter implements IShardGetter {
             }
         }
 
-        return new Records(recs.build(), false);
+        return new Records(recs.build(), false, buffer.isReshard());
     }
 
     @Override
@@ -132,8 +131,8 @@ class BufferedGetter implements IShardGetter {
             }
         }
     }
-    
-    /** 
+
+    /**
      * Time provider - helpful for unit tests of BufferedGetter.
      */
     static class TimeProvider {
