@@ -1,0 +1,24 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+group = 'com.amazonaws'
+version = '1.1.1'
+
+description = """Amazon Kinesis Storm Spout for Java"""
+
+ext.stormVersion = '1.0.0'
+ext.AWSSdkVersion = '1.10.69'
+
+repositories {
+
+    maven { url "http://repo.maven.apache.org/maven2" }
+}
+dependencies {
+    // Storm
+    compile group: 'org.apache.storm', name: 'storm-core', version: stormVersion
+    // AWS SDK
+    compile group: 'com.amazonaws', name: 'aws-java-sdk', version: AWSSdkVersion
+
+    compile group: 'org.apache.commons', name: 'commons-lang3', version:'3.0'
+    compile group: 'com.netflix.curator', name: 'curator-framework', version:'1.1.3'
+}
