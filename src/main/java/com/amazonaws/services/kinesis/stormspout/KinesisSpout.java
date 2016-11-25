@@ -15,27 +15,25 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import backtype.storm.Config;
-import backtype.storm.spout.SpoutOutputCollector;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.topology.IRichSpout;
-import backtype.storm.topology.OutputFieldsDeclarer;
-
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.state.IKinesisSpoutStateManager;
 import com.amazonaws.services.kinesis.stormspout.state.zookeeper.ZookeeperStateManager;
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.storm.Config;
+import org.apache.storm.spout.SpoutOutputCollector;
+import org.apache.storm.task.TopologyContext;
+import org.apache.storm.topology.IRichSpout;
+import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Storm spout for Amazon Kinesis. The spout fetches data from Kinesis and emits a tuple for each data record.
@@ -221,6 +219,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
         duplicate.setPartitionKey(record.getPartitionKey());
         duplicate.setSequenceNumber(record.getSequenceNumber());
         duplicate.setData(record.getData().duplicate());
+        duplicate.setApproximateArrivalTimestamp(record.getApproximateArrivalTimestamp());
         return duplicate;
     }
 
