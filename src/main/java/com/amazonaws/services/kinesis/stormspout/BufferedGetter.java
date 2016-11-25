@@ -40,7 +40,7 @@ class BufferedGetter implements IShardGetter {
 
     /**
      * Creates a (shard) getter that buffers records.
-     * 
+     *
      * @param underlyingGetter Unbuffered shard getter.
      * @param maxBufferSize Max number of records to fetch from the underlying getter.
      * @param emptyRecordListBackoffMillis Backoff time between GetRecords calls if previous call fetched no records.
@@ -48,10 +48,10 @@ class BufferedGetter implements IShardGetter {
     public BufferedGetter(final IShardGetter underlyingGetter, final int maxBufferSize, final long emptyRecordListBackoffMillis) {
         this(underlyingGetter, maxBufferSize, emptyRecordListBackoffMillis, new TimeProvider());
     }
-    
+
     /**
      * Used for unit testing.
-     * 
+     *
      * @param underlyingGetter Unbuffered shard getter
      * @param maxBufferSize Max number of records to fetch from the underlying getter
      * @param emptyRecordListBackoffMillis Backoff time between GetRecords calls if previous call fetched no records.
@@ -72,7 +72,7 @@ class BufferedGetter implements IShardGetter {
         ensureBuffered();
 
         if (!it.hasNext() && buffer.isEndOfShard()) {
-            return new Records(ImmutableList.<Record> of(), true);
+            return new Records(ImmutableList.<Record> of(), -1l, true);
         }
 
         ImmutableList.Builder<Record> recs = new ImmutableList.Builder<>();
@@ -94,7 +94,7 @@ class BufferedGetter implements IShardGetter {
             }
         }
 
-        return new Records(recs.build(), false);
+        return new Records(recs.build(),buffer.getMillisBehindLatest(), false);
     }
 
     @Override
@@ -132,8 +132,8 @@ class BufferedGetter implements IShardGetter {
             }
         }
     }
-    
-    /** 
+
+    /**
      * Time provider - helpful for unit tests of BufferedGetter.
      */
     static class TimeProvider {
