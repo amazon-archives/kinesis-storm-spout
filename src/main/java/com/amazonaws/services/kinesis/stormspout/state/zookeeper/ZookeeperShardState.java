@@ -64,7 +64,7 @@ class ZookeeperShardState {
         try {
             zk = CuratorFrameworkFactory.newClient(config.getZookeeperConnectionString(),
                     new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_NUM_RETRIES));
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOG.error("Could not connect to ZooKeeper", e);
             throw new KinesisSpoutException(e);
         }
