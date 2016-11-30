@@ -12,6 +12,7 @@ import java.util.UUID;
 
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -39,7 +40,8 @@ public class KinesisHelperTest {
         //
 
         // NOTE: Supplying only awsAccessKeyId, awsSecretKey
-        AWSCredentialsPrimitives awsCredentialsPrimitives = new AWSCredentialsPrimitives(awsAccessKeyId, awsSecretKey);
+        AWSCredentialsPrimitives awsCredentialsPrimitives =
+                AWSCredentialsPrimitives.makeWithLongLivedAccessKeys(awsAccessKeyId, awsSecretKey);
 
         KinesisHelper kinesisHelper = new KinesisHelper(streamName,
                 awsCredentialsPrimitives,
@@ -52,13 +54,16 @@ public class KinesisHelperTest {
         assertThat(awsCredentialsProvider, instanceOf(AWSCredentialsProvider.class));
         assertEquals(awsAccessKeyId, awsCredentialsProvider.getCredentials().getAWSAccessKeyId());
         assertEquals(awsSecretKey, awsCredentialsProvider.getCredentials().getAWSSecretKey());
+        assertFalse(awsCredentialsPrimitives.useEC2Role());
+        assertFalse(awsCredentialsPrimitives.useOverrideAccessKeys());
 
 
         // Instantiate for STSAssumeRoleSessionCredentialsProvider
         //
 
         // NOTE: Supplying awsAccessKeyId, awsSecretKey, roleArn, roleSessionName
-        awsCredentialsPrimitives = new AWSCredentialsPrimitives(awsAccessKeyId, awsSecretKey, roleArn, roleSessionName);
+        awsCredentialsPrimitives = AWSCredentialsPrimitives.makeWithEC2RoleAndLongLivedAccessKeys (
+                roleArn, roleSessionName, awsAccessKeyId, awsSecretKey);
 
         kinesisHelper = new KinesisHelper(streamName,
                 awsCredentialsPrimitives,
@@ -69,8 +74,5 @@ public class KinesisHelperTest {
         awsCredentialsProvider = kinesisHelper.getKinesisCredsProvider();
 
         assertThat(awsCredentialsProvider, instanceOf(STSAssumeRoleSessionCredentialsProvider.class));
-        // NOTE: getCredentials() won't work b\c we're using junk awsAccessKeyId, awsSecretKey
-        //assertEquals(awsAccessKeyId, awsCredentialsProvider.getCredentials().getAWSAccessKeyId());
-        //assertEquals(awsSecretKey, awsCredentialsProvider.getCredentials().getAWSSecretKey());
     }
 }

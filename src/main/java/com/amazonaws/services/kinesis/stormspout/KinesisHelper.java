@@ -140,10 +140,31 @@ class KinesisHelper implements IShardListGetter {
             final AWSCredentialsPrimitives awsCredentialsPrimitives =
                     (AWSCredentialsPrimitives) SerializationHelper.kryoDeserializeObject(serializedAWSCredentialsPrimitives);
 
-            if(awsCredentialsPrimitives.getRoleArn() == null){
+            if(awsCredentialsPrimitives.useEC2Role()){
+                // if useEC2Role is specified create an STSAssumeRoleSessionCredentialsProvider.
+                STSAssumeRoleSessionCredentialsProvider.Builder stsBuilder =
+                        new STSAssumeRoleSessionCredentialsProvider.Builder(awsCredentialsPrimitives.getRoleArn(),
+                                awsCredentialsPrimitives.getRoleSessionName());
 
-                // If Role ARN is not specified we'll just create the basic credentials provider
-                //
+                if(awsCredentialsPrimitives.useOverrideAccessKeys()) {
+                    // use the supplied access keys, if specified. this is useful for testing local (not on an EC2 instance).
+                    stsBuilder.withLongLivedCredentials(new AWSCredentials() {
+                        @Override
+                        public String getAWSAccessKeyId() {
+                            return awsCredentialsPrimitives.getAwsAccessKeyId();
+                        }
+
+                        @Override
+                        public String getAWSSecretKey() {
+                            return awsCredentialsPrimitives.getAwsSecretKey();
+                        }
+                    });
+                }
+
+                kinesisCredsProvider = stsBuilder.build();
+
+            }else{
+                // otherwise, create the base AWSCredentialsProvider using the specfied access keys.
                 kinesisCredsProvider = new AWSCredentialsProvider() {
                     @Override
                     public AWSCredentials getCredentials() {
@@ -164,27 +185,6 @@ class KinesisHelper implements IShardListGetter {
                     public void refresh() {
                     }
                 };
-            }else{
-
-                // Otherwise create an STS Assume Role credentials provider
-                //
-                STSAssumeRoleSessionCredentialsProvider.Builder stsBuilder =
-                        new STSAssumeRoleSessionCredentialsProvider.Builder(awsCredentialsPrimitives.getRoleArn(),
-                                awsCredentialsPrimitives.getRoleSessionName());
-
-                stsBuilder.withLongLivedCredentials(new AWSCredentials() {
-                    @Override
-                    public String getAWSAccessKeyId() {
-                        return awsCredentialsPrimitives.getAwsAccessKeyId();
-                    }
-
-                    @Override
-                    public String getAWSSecretKey() {
-                        return awsCredentialsPrimitives.getAwsSecretKey();
-                    }
-                });
-
-                kinesisCredsProvider = stsBuilder.build();
             }
         }
         return kinesisCredsProvider;
