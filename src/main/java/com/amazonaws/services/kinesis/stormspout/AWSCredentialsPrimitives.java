@@ -1,6 +1,10 @@
 package com.amazonaws.services.kinesis.stormspout;
 
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
+
 /**
  * Encapsulates AWS Credentials fields required to bootstrap a CredentialsProvider
  */
@@ -66,6 +70,59 @@ public class AWSCredentialsPrimitives {
         this.useOverrideAccessKeys = useOverrideAccessKeys;
     }
 
+    public AWSCredentialsProvider makeNewAWSCredentialsProvider(){
+
+        AWSCredentialsProvider awsCredentialsProvider;
+
+        if(useEC2Role){
+            // if useEC2Role is specified create an STSAssumeRoleSessionCredentialsProvider.
+            STSAssumeRoleSessionCredentialsProvider.Builder stsBuilder =
+                    new STSAssumeRoleSessionCredentialsProvider.Builder(roleArn, roleSessionName);
+
+            if(useOverrideAccessKeys) {
+                // use the supplied access keys, if specified. this is useful for testing local (not on an EC2 instance).
+                stsBuilder.withLongLivedCredentials(new AWSCredentials() {
+                    @Override
+                    public String getAWSAccessKeyId() {
+                        return awsAccessKeyId;
+                    }
+
+                    @Override
+                    public String getAWSSecretKey() {
+                        return awsSecretKey;
+                    }
+                });
+            }
+
+            awsCredentialsProvider = stsBuilder.build();
+
+        }else{
+            // otherwise, create the base AWSCredentialsProvider using the specfied access keys.
+            awsCredentialsProvider = new AWSCredentialsProvider() {
+                @Override
+                public AWSCredentials getCredentials() {
+                    return new AWSCredentials() {
+                        @Override
+                        public String getAWSAccessKeyId() {
+                            return awsAccessKeyId;
+                        }
+
+                        @Override
+                        public String getAWSSecretKey() {
+                            return awsSecretKey;
+                        }
+                    };
+                }
+
+                @Override
+                public void refresh() {
+                }
+            };
+        }
+
+        return awsCredentialsProvider;
+    }
+
     public String getAwsAccessKeyId() {
         return awsAccessKeyId;
     }
@@ -80,13 +137,5 @@ public class AWSCredentialsPrimitives {
 
     public String getRoleSessionName() {
         return roleSessionName;
-    }
-
-    public boolean useEC2Role() {
-        return useEC2Role;
-    }
-
-    public boolean useOverrideAccessKeys() {
-        return useOverrideAccessKeys;
     }
 }
