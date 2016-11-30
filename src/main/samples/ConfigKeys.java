@@ -32,4 +32,12 @@ public class ConfigKeys {
     public static final String ZOOKEEPER_PREFIX_KEY = "zookeeperPrefix";
 
     public static final String TOPOLOGY_NAME_KEY = "topologyName";
+
+    public static final String AWS_ACCESS_KEY_ID = "awsAccessKeyId";
+
+    public static final String AWS_SECRET_KEY = "awsSecretKey";
+
+    public static final String ROLE_ARN = "roleArn";
+
+    public static final String ROLE_SESSION_NAME = "roleSessionName";
 }

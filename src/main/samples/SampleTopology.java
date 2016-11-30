@@ -45,6 +45,10 @@ public class SampleTopology {
     private static Regions region = Regions.US_EAST_1;
     private static String zookeeperEndpoint;
     private static String zookeeperPrefix;
+    private static String awsAccessKeyId;
+    private static String awsSecretKey;
+    private static String roleArn;
+    private static String roleSessionName;
 
     public static void main(String[] args) throws IllegalArgumentException, KeeperException, InterruptedException, AlreadyAliveException, InvalidTopologyException, IOException {
         String propertiesFile = null;
@@ -143,6 +147,29 @@ public class SampleTopology {
         }
         LOG.info("Using zookeeper prefix " + zookeeperPrefix);
 
+        String awsAccessKeyIdOverride = properties.getProperty(ConfigKeys.AWS_ACCESS_KEY_ID);
+        if (awsAccessKeyIdOverride != null) {
+            awsAccessKeyId = awsAccessKeyIdOverride;
+        }
+        LOG.info("Using AWS Access Key Id " + awsAccessKeyId);
+
+        String awsSecretKeyOverride = properties.getProperty(ConfigKeys.AWS_SECRET_KEY);
+        if (awsSecretKeyOverride != null) {
+            awsSecretKey = awsSecretKeyOverride;
+        }
+        LOG.info("Using AWS Secret Key " + awsSecretKey);
+
+        String roleArnOverride = properties.getProperty(ConfigKeys.ROLE_ARN);
+        if (roleArnOverride != null) {
+            roleArn = roleArnOverride;
+        }
+        LOG.info("Using Role ARN " + roleArn);
+
+        String roleSessionNameOverride = properties.getProperty(ConfigKeys.ROLE_SESSION_NAME);
+        if (roleSessionNameOverride != null) {
+            roleSessionName = roleSessionNameOverride;
+        }
+        LOG.info("Using Role Session Name " + zookeeperPrefix);
     }
     
     private static void printUsageAndExit() {
