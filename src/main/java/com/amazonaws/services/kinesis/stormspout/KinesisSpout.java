@@ -64,19 +64,20 @@ public class KinesisSpout implements IRichSpout, Serializable {
      * Constructs an instance of the spout with just enough data to bootstrap the state from.
      * Construction done here is common to all spout tasks, whereas the IKinesisSpoutStateManager created
      * in activate() is task specific.
-     * 
+     *
      * @param config Spout configuration.
-     * @param credentialsProvider Used when making requests to Kinesis.
+     * @param awsCredentialsPrimitives Encapsulates the AWS credential primitives required to bootstrap an
+     *                                 AWSCredentialsProvider for making requests to Kinesis.
      * @param clientConfiguration Client configuration used when making calls to Kinesis.
      */
     public KinesisSpout(KinesisSpoutConfig config,
-            AWSCredentialsProvider credentialsProvider,
-            ClientConfiguration clientConfiguration) {
+                        AWSCredentialsPrimitives awsCredentialsPrimitives,
+                        ClientConfiguration clientConfiguration) {
         this.config = config;
         KinesisHelper helper = new KinesisHelper(config.getStreamName(),
-                        credentialsProvider,
-                        clientConfiguration,
-                        config.getRegion());
+                awsCredentialsPrimitives,
+                clientConfiguration,
+                config.getRegion());
         this.shardListGetter = helper;
         this.getterBuilder =
                 new KinesisShardGetterBuilder(config.getStreamName(),

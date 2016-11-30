@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +50,7 @@ class KinesisHelper implements IShardListGetter {
     private static final String KINESIS_STORM_SPOUT_USER_AGENT = "kinesis-storm-spout-java-1.1.1";
     private static final long BACKOFF_MILLIS = 1000L;
 
-    private final byte[] serializedKinesisCredsProvider;
+    private final byte[] serializedAWSCredentialsPrimitives;
     private final byte[] serializedkinesisClientConfig;
     private final byte[] serializedRegion;
     private final String streamName;
@@ -59,15 +62,15 @@ class KinesisHelper implements IShardListGetter {
 
     /**
      * @param streamName Kinesis stream name to interact with.
-     * @param kinesisCredsProvider Credentials for authentication with Kinesis.
+     * @param awsCredentialsPrimitives The credentials primitives used for authentication with Kinesis.
      * @param kinesisClientConfig Configuration for the Kinesis client.
      */
     KinesisHelper(final String streamName,
-            final AWSCredentialsProvider kinesisCredsProvider,
-            final ClientConfiguration kinesisClientConfig,
-            final Region region) {
+                  final AWSCredentialsPrimitives awsCredentialsPrimitives,
+                  final ClientConfiguration kinesisClientConfig,
+                  final Region region) {
         this.streamName = streamName;
-        this.serializedKinesisCredsProvider = SerializationHelper.kryoSerializeObject(kinesisCredsProvider);
+        this.serializedAWSCredentialsPrimitives = SerializationHelper.kryoSerializeObject(awsCredentialsPrimitives);
         this.serializedkinesisClientConfig = SerializationHelper.kryoSerializeObject(kinesisClientConfig);
         this.serializedRegion = SerializationHelper.kryoSerializeObject(region);
 
@@ -134,8 +137,56 @@ class KinesisHelper implements IShardListGetter {
 
     private AWSCredentialsProvider getKinesisCredsProvider() {
         if (kinesisCredsProvider == null) {
-            kinesisCredsProvider =
-                    (AWSCredentialsProvider) SerializationHelper.kryoDeserializeObject(serializedKinesisCredsProvider);
+
+            final AWSCredentialsPrimitives awsCredentialsPrimitives =
+                    (AWSCredentialsPrimitives) SerializationHelper.kryoDeserializeObject(serializedAWSCredentialsPrimitives);
+
+            if(awsCredentialsPrimitives.getRoleArn() == null){
+
+                // If Role ARN is not specified we'll just create the basic credentials provider
+                //
+                kinesisCredsProvider = new AWSCredentialsProvider() {
+                    @Override
+                    public AWSCredentials getCredentials() {
+                        return new AWSCredentials() {
+                            @Override
+                            public String getAWSAccessKeyId() {
+                                return awsCredentialsPrimitives.getAwsAccessKeyId();
+                            }
+
+                            @Override
+                            public String getAWSSecretKey() {
+                                return awsCredentialsPrimitives.getAwsSecretKey();
+                            }
+                        };
+                    }
+
+                    @Override
+                    public void refresh() {
+                    }
+                };
+            }else{
+
+                // Otherwise create an STS Assume Role credentials provider
+                //
+                STSAssumeRoleSessionCredentialsProvider.Builder stsBuilder =
+                        new STSAssumeRoleSessionCredentialsProvider.Builder(awsCredentialsPrimitives.getRoleArn(),
+                                awsCredentialsPrimitives.getRoleSessionName());
+
+                stsBuilder.withLongLivedCredentials(new AWSCredentials() {
+                    @Override
+                    public String getAWSAccessKeyId() {
+                        return awsCredentialsPrimitives.getAwsAccessKeyId();
+                    }
+
+                    @Override
+                    public String getAWSSecretKey() {
+                        return awsCredentialsPrimitives.getAwsSecretKey();
+                    }
+                });
+
+                kinesisCredsProvider = stsBuilder.build();
+            }
         }
         return kinesisCredsProvider;
     }
