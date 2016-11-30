@@ -22,7 +22,6 @@ import java.util.concurrent.Callable;
 
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,7 +134,7 @@ class KinesisHelper implements IShardListGetter {
         return kinesisClient;
     }
 
-    private AWSCredentialsProvider getKinesisCredsProvider() {
+    AWSCredentialsProvider getKinesisCredsProvider() {
         if (kinesisCredsProvider == null) {
 
             final AWSCredentialsPrimitives awsCredentialsPrimitives =
