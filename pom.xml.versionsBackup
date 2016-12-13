@@ -6,8 +6,8 @@
     <artifactId>kinesis-storm-spout</artifactId>
     <packaging>jar</packaging>
     <name>Amazon Kinesis Storm Spout for Java</name>
-    <version>1.2.0-custom-1</version>
-    <description>The Amazon Kinesis Storm Spout helps Java developers integrate Amazon Kinesis with Storm.</description>
+    <version>1.2.1-SNAPSHOT</version>
+    <description> The Amazon Kinesis Storm Spout helps Java developers integrate Amazon Kinesis with Storm.</description>
     <url>https://aws.amazon.com/kinesis</url>
 
     <scm>
@@ -32,10 +32,10 @@
         <guava.version>20.0</guava.version>
         <commons-lang3.version>3.5</commons-lang3.version>
         <kryo.version>2.24.0</kryo.version>
-        <jackson.version>2.8.5</jackson.version>
+        <jackson.version>2.3.1</jackson.version>
     </properties>
-
-
+    
+    
     <dependencies>
         <dependency>
             <groupId>com.amazonaws</groupId>
@@ -73,19 +73,6 @@
             <artifactId>jackson-core</artifactId>
             <version>${jackson.version}</version>
         </dependency>
-        <!-- Test Dependencies -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>2.2.22</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <developers>
@@ -100,37 +87,37 @@
     </developers>
 
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.2</version>
-                    <configuration>
-                        <source>1.7</source>
-                        <target>1.7</target>
-                        <encoding>UTF-8</encoding>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-
+      <pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.4</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.2</version>
+            <configuration>
+              <source>1.7</source>
+              <target>1.7</target>
+              <encoding>UTF-8</encoding>
+            </configuration>
+          </plugin>
         </plugins>
+      </pluginManagement>
+
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>1.4</version>
+          <executions>
+            <execution>
+              <id>sign-artifacts</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>sign</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
     </build>
 
 </project>
