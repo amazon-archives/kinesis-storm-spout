@@ -15,19 +15,15 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
+import org.junit.*;
+
 import java.io.IOException;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
-
-import junit.framework.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  *
@@ -64,9 +60,8 @@ public class ShardListV0Test {
 
     /**
      * Test method for {@link com.amazonaws.services.kinesis.stormspout.state.zookeeper.ShardListV0#getShardList()}.
-     * 
-     * @throws IOException
-     *             Thrown if we encounter errors when serializing/deserializing.
+     *
+     * @throws IOException Thrown if we encounter errors when serializing/deserializing.
      */
     @Test
     public final void testJSONSerialization() throws IOException {
@@ -74,10 +69,10 @@ public class ShardListV0Test {
         ShardListV0 shards = new ShardListV0(shardList);
         ObjectMapper objectMapper = new ObjectMapper();
         byte[] data = objectMapper.writeValueAsBytes(shards);
-        Assert.assertTrue(data.length > 0);
+        assertTrue(data.length > 0);
 
         List<String> shardList2 = objectMapper.readValue(data, ShardListV0.class).getShardList();
-        Assert.assertEquals(shardList.size(), shardList2.size());
+        assertEquals(shardList.size(), shardList2.size());
     }
 
 }

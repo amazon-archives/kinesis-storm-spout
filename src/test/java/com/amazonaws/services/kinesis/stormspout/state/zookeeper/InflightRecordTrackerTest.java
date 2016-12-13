@@ -15,20 +15,16 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
-import java.math.BigInteger;
-import java.util.Map;
-
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNode;
 import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNodeList;
+import org.junit.*;
 
-import junit.framework.Assert;
+import java.math.BigInteger;
+import java.util.Map;
+
+import static org.junit.Assert.*;
+
 
 /**
  * Tests for InflightRecordTracker.
@@ -75,36 +71,36 @@ public class InflightRecordTrackerTest {
      */
     @Test
     public final void testGetCheckpointSequenceNumber() {
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         boolean isRetry = false;
         tracker.onEmit(newRecordWithSequenceNumber("1"), isRetry);
         Record record = newRecordWithSequenceNumber("2");
         tracker.onEmit(record, isRetry);
         tracker.onEmit(newRecordWithSequenceNumber("3"), isRetry);
         tracker.onEmit(newRecordWithSequenceNumber("4"), isRetry);
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         tracker.onFail("1");
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         tracker.onAck("1");
-        Assert.assertEquals("1", tracker.getCheckpointSequenceNumber());
+        assertEquals("1", tracker.getCheckpointSequenceNumber());
         tracker.onAck("3");
-        Assert.assertEquals("1", tracker.getCheckpointSequenceNumber());
+        assertEquals("1", tracker.getCheckpointSequenceNumber());
 
         isRetry = true;
         tracker.onFail("2");
         tracker.onEmit(record, isRetry);
-        Assert.assertEquals("1", tracker.getCheckpointSequenceNumber());
+        assertEquals("1", tracker.getCheckpointSequenceNumber());
         tracker.onFail("2");
         tracker.onEmit(record, isRetry);
-        Assert.assertEquals("1", tracker.getCheckpointSequenceNumber());
+        assertEquals("1", tracker.getCheckpointSequenceNumber());
         tracker.onFail("2");
         tracker.onEmit(record, isRetry);
-        Assert.assertEquals("1", tracker.getCheckpointSequenceNumber());
+        assertEquals("1", tracker.getCheckpointSequenceNumber());
         tracker.onFail("2");
-        Assert.assertEquals("3", tracker.getCheckpointSequenceNumber());
+        assertEquals("3", tracker.getCheckpointSequenceNumber());
 
         tracker.onAck("4");
-        Assert.assertEquals("4", tracker.getCheckpointSequenceNumber());
+        assertEquals("4", tracker.getCheckpointSequenceNumber());
     }
 
     /**
@@ -117,11 +113,11 @@ public class InflightRecordTrackerTest {
         boolean isRetry = false;
         tracker.onEmit(record, isRetry);
         RecordNodeList list = tracker.getRecordNodeList();
-        Assert.assertEquals(1, list.size());
-        Assert.assertSame(record, list.getFirst().getRecord());
-        Assert.assertEquals(0, list.getFirst().getRetryCount());
-        Assert.assertFalse(tracker.shouldRetry());
-        Assert.assertTrue(tracker.getRetryQueue().isEmpty());
+        assertEquals(1, list.size());
+        assertSame(record, list.getFirst().getRecord());
+        assertEquals(0, list.getFirst().getRetryCount());
+        assertFalse(tracker.shouldRetry());
+        assertTrue(tracker.getRetryQueue().isEmpty());
     }
 
     /**
@@ -136,9 +132,9 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(record, isRetry);
         tracker.onAck(sequenceNumber);
         RecordNodeList list = tracker.getRecordNodeList();
-        Assert.assertEquals(0, list.size());
-        Assert.assertFalse(tracker.shouldRetry());
-        Assert.assertTrue(tracker.getRetryQueue().isEmpty());
+        assertEquals(0, list.size());
+        assertFalse(tracker.shouldRetry());
+        assertTrue(tracker.getRetryQueue().isEmpty());
     }
 
     /**
@@ -153,13 +149,13 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(record, isRetry);
         tracker.onFail(sequenceNumber);
         RecordNodeList list = tracker.getRecordNodeList();
-        Assert.assertEquals(1, list.size());
-        Assert.assertSame(record, list.getFirst().getRecord());
-        Assert.assertTrue(tracker.shouldRetry());
-        Assert.assertEquals(sequenceNumber, tracker.recordToRetry().getSequenceNumber());
-        Assert.assertEquals(0, list.getFirst().getRetryCount());
-        Assert.assertEquals(1, tracker.getRetryQueue().size());
-        Assert.assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
+        assertEquals(1, list.size());
+        assertSame(record, list.getFirst().getRecord());
+        assertTrue(tracker.shouldRetry());
+        assertEquals(sequenceNumber, tracker.recordToRetry().getSequenceNumber());
+        assertEquals(0, list.getFirst().getRetryCount());
+        assertEquals(1, tracker.getRetryQueue().size());
+        assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
     }
 
     /**
@@ -174,38 +170,38 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(record, isRetry);
         tracker.onFail(sequenceNumber);
         RecordNodeList list = tracker.getRecordNodeList();
-        Assert.assertEquals(1, list.size());
-        Assert.assertSame(record, list.getFirst().getRecord());
-        Assert.assertTrue(tracker.shouldRetry());
-        Assert.assertEquals(sequenceNumber, tracker.recordToRetry().getSequenceNumber());
-        Assert.assertEquals(0, list.getFirst().getRetryCount());
-        Assert.assertEquals(1, tracker.getRetryQueue().size());
-        Assert.assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
+        assertEquals(1, list.size());
+        assertSame(record, list.getFirst().getRecord());
+        assertTrue(tracker.shouldRetry());
+        assertEquals(sequenceNumber, tracker.recordToRetry().getSequenceNumber());
+        assertEquals(0, list.getFirst().getRetryCount());
+        assertEquals(1, tracker.getRetryQueue().size());
+        assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
 
         isRetry = true;
         tracker.onEmit(record, isRetry);
-        Assert.assertEquals(0, tracker.getRetryQueue().size());
-        Assert.assertEquals(1, list.size());
-        Assert.assertEquals(1, list.getFirst().getRetryCount());
-        Assert.assertFalse(tracker.shouldRetry());
-        Assert.assertNull(tracker.recordToRetry());
+        assertEquals(0, tracker.getRetryQueue().size());
+        assertEquals(1, list.size());
+        assertEquals(1, list.getFirst().getRetryCount());
+        assertFalse(tracker.shouldRetry());
+        assertNull(tracker.recordToRetry());
 
         tracker.onFail(sequenceNumber);
         tracker.onEmit(record, isRetry);
-        Assert.assertEquals(2, list.getFirst().getRetryCount());
+        assertEquals(2, list.getFirst().getRetryCount());
 
         tracker.onFail(sequenceNumber);
         tracker.onEmit(record, isRetry);
-        Assert.assertEquals(3, list.getFirst().getRetryCount());
+        assertEquals(3, list.getFirst().getRetryCount());
 
         // At this point, we'll exhaust the retry limit and we'll treat this like an ack
         tracker.onFail(sequenceNumber);
-        Assert.assertEquals(0, list.size());
-        Assert.assertFalse(tracker.shouldRetry());
+        assertEquals(0, list.size());
+        assertFalse(tracker.shouldRetry());
 
         tracker.onEmit(record, isRetry);
-        Assert.assertEquals(0, list.size());
-        Assert.assertFalse(tracker.shouldRetry());
+        assertEquals(0, list.size());
+        assertFalse(tracker.shouldRetry());
     }
 
     /**
@@ -219,8 +215,8 @@ public class InflightRecordTrackerTest {
         boolean isRetry = false;
         tracker.onEmit(record, isRetry);
         tracker.onFail(sequenceNumber);
-        Assert.assertTrue(tracker.shouldRetry());
-        Assert.assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
+        assertTrue(tracker.shouldRetry());
+        assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
     }
 
     /**
@@ -234,9 +230,9 @@ public class InflightRecordTrackerTest {
         boolean isRetry = false;
         tracker.onEmit(record, isRetry);
         tracker.onFail(sequenceNumber);
-        Assert.assertTrue(tracker.shouldRetry());
-        Assert.assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
-        Assert.assertEquals(sequenceNumber, tracker.recordToRetry().getSequenceNumber());
+        assertTrue(tracker.shouldRetry());
+        assertEquals(sequenceNumber, tracker.getRetryQueue().peek());
+        assertEquals(sequenceNumber, tracker.recordToRetry().getSequenceNumber());
     }
 
     /**
@@ -250,14 +246,14 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(newRecordWithSequenceNumber("3"), isRetry);
         tracker.onAck("2");
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(3, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(3, tracker.getRecordNodeList().size());
         tracker.onAck("1");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNull(seqNumToNodeMap.get("1"));
-        Assert.assertNull(seqNumToNodeMap.get("2"));
-        Assert.assertEquals(1, tracker.getRecordNodeList().size());
-        Assert.assertEquals("2", tracker.getCheckpointSequenceNumber());
+        assertNull(seqNumToNodeMap.get("1"));
+        assertNull(seqNumToNodeMap.get("2"));
+        assertEquals(1, tracker.getRecordNodeList().size());
+        assertEquals("2", tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -267,14 +263,14 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(newRecordWithSequenceNumber("1"), isRetry);
         tracker.onEmit(newRecordWithSequenceNumber("2"), isRetry);
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(2, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(2, tracker.getRecordNodeList().size());
         tracker.onAck("1");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNull(seqNumToNodeMap.get("1"));
-        Assert.assertNotNull(seqNumToNodeMap.get("2"));
-        Assert.assertEquals(1, tracker.getRecordNodeList().size());
-        Assert.assertEquals("1", tracker.getCheckpointSequenceNumber());
+        assertNull(seqNumToNodeMap.get("1"));
+        assertNotNull(seqNumToNodeMap.get("2"));
+        assertEquals(1, tracker.getRecordNodeList().size());
+        assertEquals("1", tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -283,13 +279,13 @@ public class InflightRecordTrackerTest {
         boolean isRetry = false;
         tracker.onEmit(newRecordWithSequenceNumber("1"), isRetry);
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(1, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(1, tracker.getRecordNodeList().size());
         tracker.onAck("1");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNull(seqNumToNodeMap.get("1"));
-        Assert.assertEquals(0, tracker.getRecordNodeList().size());
-        Assert.assertEquals("1", tracker.getCheckpointSequenceNumber());
+        assertNull(seqNumToNodeMap.get("1"));
+        assertEquals(0, tracker.getRecordNodeList().size());
+        assertEquals("1", tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -301,15 +297,15 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(newRecordWithSequenceNumber("3"), isRetry);
         tracker.onAck("3");
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(3, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(3, tracker.getRecordNodeList().size());
         tracker.onAck("2");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNotNull(seqNumToNodeMap.get("1"));
-        Assert.assertNull(seqNumToNodeMap.get("2"));
-        Assert.assertNotNull(seqNumToNodeMap.get("3"));
-        Assert.assertEquals(2, tracker.getRecordNodeList().size());
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertNotNull(seqNumToNodeMap.get("1"));
+        assertNull(seqNumToNodeMap.get("2"));
+        assertNotNull(seqNumToNodeMap.get("3"));
+        assertEquals(2, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -320,15 +316,15 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(newRecordWithSequenceNumber("2"), isRetry);
         tracker.onEmit(newRecordWithSequenceNumber("3"), isRetry);
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(3, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(3, tracker.getRecordNodeList().size());
         tracker.onAck("2");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNotNull(seqNumToNodeMap.get("1"));
-        Assert.assertNotNull(seqNumToNodeMap.get("2"));
-        Assert.assertNotNull(seqNumToNodeMap.get("3"));
-        Assert.assertEquals(3, tracker.getRecordNodeList().size());
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertNotNull(seqNumToNodeMap.get("1"));
+        assertNotNull(seqNumToNodeMap.get("2"));
+        assertNotNull(seqNumToNodeMap.get("3"));
+        assertEquals(3, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -338,14 +334,14 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(newRecordWithSequenceNumber("1"), isRetry);
         tracker.onEmit(newRecordWithSequenceNumber("2"), isRetry);
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(2, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(2, tracker.getRecordNodeList().size());
         tracker.onAck("2");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNotNull(seqNumToNodeMap.get("1"));
-        Assert.assertNotNull(seqNumToNodeMap.get("2"));
-        Assert.assertEquals(2, tracker.getRecordNodeList().size());
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertNotNull(seqNumToNodeMap.get("1"));
+        assertNotNull(seqNumToNodeMap.get("2"));
+        assertEquals(2, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -359,16 +355,16 @@ public class InflightRecordTrackerTest {
         tracker.onAck("2");
         tracker.onAck("4");
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(4, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(4, tracker.getRecordNodeList().size());
         tracker.onAck("3");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNotNull(seqNumToNodeMap.get("1"));
-        Assert.assertNull(seqNumToNodeMap.get("2"));
-        Assert.assertNull(seqNumToNodeMap.get("3"));
-        Assert.assertNotNull(seqNumToNodeMap.get("4"));
-        Assert.assertEquals(2, tracker.getRecordNodeList().size());
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertNotNull(seqNumToNodeMap.get("1"));
+        assertNull(seqNumToNodeMap.get("2"));
+        assertNull(seqNumToNodeMap.get("3"));
+        assertNotNull(seqNumToNodeMap.get("4"));
+        assertEquals(2, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -381,16 +377,16 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(newRecordWithSequenceNumber("4"), isRetry);
         tracker.onAck("2");
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(4, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(4, tracker.getRecordNodeList().size());
         tracker.onAck("3");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNotNull(seqNumToNodeMap.get("1"));
-        Assert.assertNull(seqNumToNodeMap.get("2"));
-        Assert.assertNotNull(seqNumToNodeMap.get("3"));
-        Assert.assertNotNull(seqNumToNodeMap.get("4"));
-        Assert.assertEquals(3, tracker.getRecordNodeList().size());
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertNotNull(seqNumToNodeMap.get("1"));
+        assertNull(seqNumToNodeMap.get("2"));
+        assertNotNull(seqNumToNodeMap.get("3"));
+        assertNotNull(seqNumToNodeMap.get("4"));
+        assertEquals(3, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -402,15 +398,15 @@ public class InflightRecordTrackerTest {
         tracker.onEmit(newRecordWithSequenceNumber("3"), isRetry);
         tracker.onAck("2");
 
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
-        Assert.assertEquals(3, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertEquals(3, tracker.getRecordNodeList().size());
         tracker.onAck("3");
         Map<String, RecordNode> seqNumToNodeMap = tracker.getSequenceNumberToRecordNodeMap();
-        Assert.assertNotNull(seqNumToNodeMap.get("1"));
-        Assert.assertNull(seqNumToNodeMap.get("2"));
-        Assert.assertNotNull(seqNumToNodeMap.get("3"));
-        Assert.assertEquals(2, tracker.getRecordNodeList().size());
-        Assert.assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
+        assertNotNull(seqNumToNodeMap.get("1"));
+        assertNull(seqNumToNodeMap.get("2"));
+        assertNotNull(seqNumToNodeMap.get("3"));
+        assertEquals(2, tracker.getRecordNodeList().size());
+        assertEquals(INITIAL_SEQUENCE_NUMBER, tracker.getCheckpointSequenceNumber());
         validateInternalState();
     }
 
@@ -419,25 +415,25 @@ public class InflightRecordTrackerTest {
         RecordNodeList list = tracker.getRecordNodeList();
         BigInteger checkpoint = new BigInteger(tracker.getCheckpointSequenceNumber());
 
-        Assert.assertEquals(seqNumToNodeMap.size(), list.size());
+        assertEquals(seqNumToNodeMap.size(), list.size());
         RecordNode node = list.getFirst();
         RecordNode expectedLast = node;
         RecordNode expectedPrevious = null;
         while (node != null) {
             String sequenceNumber = node.getRecord().getSequenceNumber();
             RecordNode nodeInMap = seqNumToNodeMap.get(sequenceNumber);
-            Assert.assertNotNull(nodeInMap);
-            Assert.assertSame(node, nodeInMap);
-            Assert.assertSame(expectedPrevious, node.getPrev());
-            Assert.assertTrue(checkpoint.compareTo(new BigInteger(sequenceNumber)) < 0);
+            assertNotNull(nodeInMap);
+            assertSame(node, nodeInMap);
+            assertSame(expectedPrevious, node.getPrev());
+            assertTrue(checkpoint.compareTo(new BigInteger(sequenceNumber)) < 0);
             if (node.isAcked()) {
-                Assert.assertTrue((node.getPrev() == null) || (!node.getPrev().isAcked()));
+                assertTrue((node.getPrev() == null) || (!node.getPrev().isAcked()));
             }
             expectedPrevious = node;
             expectedLast = node;
             node = node.getNext();
         }
-        Assert.assertSame(expectedLast, list.getLast());
+        assertSame(expectedLast, list.getLast());
     }
 
     private Record newRecordWithSequenceNumber(final String sequenceNumber) {

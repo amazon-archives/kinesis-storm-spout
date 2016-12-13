@@ -15,9 +15,8 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import org.junit.Test;
-
 import com.amazonaws.regions.Regions;
+import org.junit.Test;
 
 /**
  * Unit tests for the KinesisSpoutConfig class.

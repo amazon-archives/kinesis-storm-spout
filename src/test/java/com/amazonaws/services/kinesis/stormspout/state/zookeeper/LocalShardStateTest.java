@@ -15,16 +15,13 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-
+import com.amazonaws.services.kinesis.model.Record;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.amazonaws.services.kinesis.model.Record;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.*;
 
 /**
  * Verifies that section 2.3.1 of the specs is implemented correctly.
@@ -46,7 +43,9 @@ public class LocalShardStateTest {
         assertFalse(state.shouldRetry());
     }
 
-    /** Acking a seq num that was not previously emitted does not cause the state to change. */
+    /**
+     * Acking a seq num that was not previously emitted does not cause the state to change.
+     */
     @Test
     public void ackDoesNotUpdateVisibleStateOnUnkownSeqNum() {
         // TODO: Remove final String lastEmitted = state.getLastEmitted();
@@ -65,7 +64,9 @@ public class LocalShardStateTest {
         assertThat(state.isDirty(), is(equalTo(dirty)));
     }
 
-    /** See specs@2.3.1 */
+    /**
+     * See specs@2.3.1
+     */
     @Test
     public void ackingContinousSeqNumsShouldUpdateLatestValidSeqNum() {
         state.emit(newRecordWithSequenceNumber("01"), false);
@@ -78,7 +79,9 @@ public class LocalShardStateTest {
         assertThat(state.getLatestValidSeqNum(), is(equalTo("02")));
     }
 
-    /** An ack that results to an update to the latest valid seq num should set the dirty flag. */
+    /**
+     * An ack that results to an update to the latest valid seq num should set the dirty flag.
+     */
     @Test
     public void ackingContinousSeqNumsShouldSetDirtyFlag() {
         state.emit(newRecordWithSequenceNumber("01"), false);
@@ -91,7 +94,9 @@ public class LocalShardStateTest {
         assertFalse(state.isDirty());
     }
 
-    /** See specs@2.3.1 */
+    /**
+     * See specs@2.3.1
+     */
     @Test
     public void ackingShouldOnlyUpdateIfNoGap() {
         state.emit(newRecordWithSequenceNumber("01"), false);
@@ -110,7 +115,9 @@ public class LocalShardStateTest {
         assertThat(state.getLatestValidSeqNum(), is(equalTo("04")));
     }
 
-    /** Failing a record causes a retry of that record. */
+    /**
+     * Failing a record causes a retry of that record.
+     */
     @Test
     public void failCausesRetry() {
         String sequenceNumber = "01";
@@ -124,7 +131,9 @@ public class LocalShardStateTest {
         assertFalse(state.shouldRetry());
     }
 
-    /** Failing a seq num that was not previously emitted does not cause the state to change. */
+    /**
+     * Failing a seq num that was not previously emitted does not cause the state to change.
+     */
     @Test
     public void failShouldNotUpdateVisibleStateOnUnknownSeqNums() {
         final boolean shouldRetry = state.shouldRetry();

@@ -20,13 +20,14 @@ import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.GetRecordsRequest;
 import com.amazonaws.services.kinesis.model.GetRecordsResult;
 import com.amazonaws.services.kinesis.model.Record;
-import junit.framework.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -35,7 +36,8 @@ import static org.mockito.Mockito.when;
  */
 public class KinesisShardGetterTest {
     String streamName = "TestStream";
-    String shardId = "shardId-00001";
+    ShardInfo shardId = new ShardInfo("shardId-00001", true);
+
     AmazonKinesisClient mockKinesisClient = Mockito.mock(AmazonKinesisClient.class);
     KinesisShardGetter getter = new KinesisShardGetter(streamName, shardId, mockKinesisClient);
 
@@ -47,7 +49,7 @@ public class KinesisShardGetterTest {
         when(mockKinesisClient.getRecords(isA(GetRecordsRequest.class)))
                 .thenThrow(new AmazonServiceException("Test Exception"));
         Records records = getter.getNext(1);
-        Assert.assertTrue(records.getRecords().isEmpty());
+        assertTrue(records.getRecords().isEmpty());
     }
 
     /**
@@ -69,10 +71,10 @@ public class KinesisShardGetterTest {
 
         Records actualRecords = getter.getNext(1);
 
-        Assert.assertEquals(records.size(), actualRecords.getRecords().size());
+        assertEquals(records.size(), actualRecords.getRecords().size());
         Record actualRecord = actualRecords.getRecords().get(0);
-        Assert.assertEquals(partitionKey, actualRecord.getPartitionKey());
-        Assert.assertEquals(sequenceNumber, actualRecord.getSequenceNumber());
+        assertEquals(partitionKey, actualRecord.getPartitionKey());
+        assertEquals(sequenceNumber, actualRecord.getSequenceNumber());
     }
 
 }

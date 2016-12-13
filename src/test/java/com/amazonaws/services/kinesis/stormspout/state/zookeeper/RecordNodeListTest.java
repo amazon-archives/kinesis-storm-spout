@@ -15,15 +15,15 @@
 
 package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 
+import com.amazonaws.services.kinesis.model.Record;
+import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNode;
+import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNodeList;
+import junit.framework.Assert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.amazonaws.services.kinesis.model.Record;
-import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNode;
-import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNodeList;
-
-import junit.framework.Assert;
+import static org.junit.Assert.*;
 
 /**
  * Tests for RecordNodeList.
@@ -54,7 +54,7 @@ public class RecordNodeListTest {
 
     /**
      * Test method for
-     * {@link com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNodeList#addToList(com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNode)}.
+     * {@link com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNodeList#addToList(com.amazonaws.services.kinesis.model.Record)}.
      */
     @Test
     public final void testAddToList() {
@@ -65,11 +65,11 @@ public class RecordNodeListTest {
         RecordNode previous = firstNode;
         for (int i = 2; i < 15; i++) {
             RecordNode node = addNodeToListAndValidate(list, Integer.toString(i));
-            Assert.assertSame(firstNode, list.getFirst());
-            Assert.assertSame(previous, node.getPrev());
-            Assert.assertNull(node.getNext());
-            Assert.assertSame(node, previous.getNext());
-            Assert.assertSame(node, list.getLast());
+            assertSame(firstNode, list.getFirst());
+            assertSame(previous, node.getPrev());
+            assertNull(node.getNext());
+            assertSame(node, previous.getNext());
+            assertSame(node, list.getLast());
             previous = node;
         }
     }
@@ -81,7 +81,7 @@ public class RecordNodeListTest {
     @Test
     public final void testRemoveNodeSingle() {
         RecordNode node = addNodeToListAndValidate(list, "1");
-        Assert.assertSame(node, list.getFirst());
+        assertSame(node, list.getFirst());
         removeNodeAndValidate(list, node);
     }
 
@@ -96,8 +96,8 @@ public class RecordNodeListTest {
         RecordNode third = addNodeToListAndValidate(list, "3");
         RecordNode fourth = addNodeToListAndValidate(list, "4");
 
-        Assert.assertSame(first, list.getFirst());
-        Assert.assertSame(fourth, list.getLast());
+        assertSame(first, list.getFirst());
+        assertSame(fourth, list.getLast());
         // Remove middle node
         removeNodeAndValidate(list, third);
         // Remove first node
@@ -114,9 +114,9 @@ public class RecordNodeListTest {
      */
     @Test
     public final void testGetFirst() {
-        Assert.assertNull(list.getFirst());
+        assertNull(list.getFirst());
         RecordNode node = addNodeToListAndValidate(list, "1");
-        Assert.assertSame(node, list.getFirst());
+        assertSame(node, list.getFirst());
     }
 
     /**
@@ -125,11 +125,11 @@ public class RecordNodeListTest {
      */
     @Test
     public final void testGetLast() {
-        Assert.assertNull(list.getLast());
+        assertNull(list.getLast());
         RecordNode node = addNodeToListAndValidate(list, "1");
-        Assert.assertSame(node, list.getLast());
+        assertSame(node, list.getLast());
         removeNodeAndValidate(list, node);
-        Assert.assertNull(list.getLast());
+        assertNull(list.getLast());
     }
 
     /**
@@ -138,17 +138,17 @@ public class RecordNodeListTest {
      */
     @Test
     public final void testGetSize() {
-        Assert.assertEquals(0, list.size());
+        assertEquals(0, list.size());
         addNodeToListAndValidate(list, "1");
-        Assert.assertEquals(1, list.size());
+        assertEquals(1, list.size());
     }
 
     private RecordNode addNodeToListAndValidate(RecordNodeList list, String sequenceNumber) {
         int initialSize = list.size();
         Record record = newRecordWithSequenceNumber(sequenceNumber);
         RecordNode node = list.addToList(record);
-        Assert.assertEquals(initialSize + 1, list.size());
-        Assert.assertSame(node, list.getLast());
+        assertEquals(initialSize + 1, list.size());
+        assertSame(node, list.getLast());
         return node;
     }
 
@@ -165,12 +165,12 @@ public class RecordNodeListTest {
             Assert.assertSame(previous, next.getPrev());
         }
 
-        Assert.assertNotSame(nodeToRemove, list.getFirst());
-        Assert.assertNotSame(nodeToRemove, list.getLast());
-        Assert.assertEquals(initialSize - 1, list.size());
+        assertNotSame(nodeToRemove, list.getFirst());
+        assertNotSame(nodeToRemove, list.getLast());
+        assertEquals(initialSize - 1, list.size());
         if (initialSize == 1) {
-            Assert.assertNull(list.getFirst());
-            Assert.assertNull(list.getLast());
+            assertNull(list.getFirst());
+            assertNull(list.getLast());
         }
 
     }
