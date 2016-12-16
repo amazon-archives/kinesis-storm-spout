@@ -65,7 +65,7 @@ class KinesisShardGetter implements IShardGetter {
             return Records.empty(true);
         }
 
-        final ImmutableList.Builder<Record> records = new ImmutableList.Builder<Record>();
+        final ImmutableList.Builder<Record> records = new ImmutableList.Builder<>();
 
         try {
             final GetRecordsRequest request = new GetRecordsRequest();

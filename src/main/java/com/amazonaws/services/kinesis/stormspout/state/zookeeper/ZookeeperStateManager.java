@@ -318,7 +318,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
 
         // Task could not get an assignment (e.g. there are too many tasks for too few shards).
         if (shardAssignment.isEmpty()) {
-            shardStates = new HashMap<String, LocalShardState>();
+            shardStates = new HashMap<>();
             getters = ImmutableList.of();
         } else {
             updateLocalState(shardAssignment);
@@ -333,7 +333,7 @@ public class ZookeeperStateManager implements Watcher, IKinesisSpoutStateManager
     private void updateLocalState(ImmutableList<String> shardAssignment) {
         // first initialization of shardStates
         if (shardStates == null) {
-            shardStates = new HashMap<String, LocalShardState>();
+            shardStates = new HashMap<>();
         }
         // remove shard state that we're not longer responsible for
         Iterator<Entry<String, LocalShardState>> iter = shardStates.entrySet().iterator();

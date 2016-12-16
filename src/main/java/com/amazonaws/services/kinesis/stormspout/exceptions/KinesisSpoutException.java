@@ -21,22 +21,28 @@ package com.amazonaws.services.kinesis.stormspout.exceptions;
 public class KinesisSpoutException extends RuntimeException {
     private static final long serialVersionUID = 140102478556038072L;
 
-    /** Constructor.
+    /**
+     * Constructor.
+     *
      * @param message Message with details.
-     * @param cause Cause
+     * @param cause   Cause
      */
     public KinesisSpoutException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    /** Constructor.
+    /**
+     * Constructor.
+     *
      * @param message Message with details.
      */
     public KinesisSpoutException(String message) {
         super(message);
     }
 
-    /** Constructor.
+    /**
+     * Constructor.
+     *
      * @param cause Cause of the exception.
      */
     public KinesisSpoutException(Throwable cause) {

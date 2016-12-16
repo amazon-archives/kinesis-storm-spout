@@ -29,5 +29,5 @@ public enum InitialPositionInStream {
     /**
      * Start from the oldest available data record.
      */
-    TRIM_HORIZON;
+    TRIM_HORIZON
 }

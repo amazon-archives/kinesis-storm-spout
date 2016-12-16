@@ -48,7 +48,7 @@ class KinesisShardGetterBuilder implements IShardGetterBuilder {
 
     @Override
     public ImmutableList<IShardGetter> buildGetters(ImmutableList<String> shardAssignment) {
-        ImmutableList.Builder<IShardGetter> builder = new ImmutableList.Builder<IShardGetter>();
+        ImmutableList.Builder<IShardGetter> builder = new ImmutableList.Builder<>();
         ImmutableSortedMap<String, ShardInfo> shards = helper.getShardList();
 
         for (String shardId : shardAssignment) {

@@ -18,7 +18,6 @@ package com.amazonaws.services.kinesis.stormspout.state.zookeeper;
 import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNode;
 import com.amazonaws.services.kinesis.stormspout.state.zookeeper.InflightRecordTracker.RecordNodeList;
-import junit.framework.Assert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,9 +57,9 @@ public class RecordNodeListTest {
      */
     @Test
     public final void testAddToList() {
-        Assert.assertNull(list.getFirst());
-        Assert.assertNull(list.getLast());
-        Assert.assertEquals(0, list.size());
+        assertNull(list.getFirst());
+        assertNull(list.getLast());
+        assertEquals(0, list.size());
         RecordNode firstNode = addNodeToListAndValidate(list, "1");
         RecordNode previous = firstNode;
         for (int i = 2; i < 15; i++) {
@@ -159,10 +158,10 @@ public class RecordNodeListTest {
         list.remove(nodeToRemove);
 
         if (previous != null) {
-            Assert.assertSame(next, previous.getNext());
+            assertSame(next, previous.getNext());
         }
         if (next != null) {
-            Assert.assertSame(previous, next.getPrev());
+            assertSame(previous, next.getPrev());
         }
 
         assertNotSame(nodeToRemove, list.getFirst());

@@ -217,7 +217,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
     public void ack(Object msgId) {
         synchronized (stateManager) {
             assert msgId instanceof String : "Expecting msgId_ to be a String";
-            final String seqNum = (String) MessageIdUtil.sequenceNumberOfMessageId((String) msgId);
+            final String seqNum = MessageIdUtil.sequenceNumberOfMessageId((String) msgId);
             final String shardId = MessageIdUtil.shardIdOfMessageId((String) msgId);
             if (LOG.isDebugEnabled()) {
                 LOG.debug(this + " Processing ack() for " + msgId + ", shardId " + shardId + " seqNum " + seqNum);
@@ -230,7 +230,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
     public void fail(Object msgId) {
         synchronized (stateManager) {
             assert msgId instanceof String : "Expecting msgId_ to be a String";
-            final String seqNum = (String) MessageIdUtil.sequenceNumberOfMessageId((String) msgId);
+            final String seqNum = MessageIdUtil.sequenceNumberOfMessageId((String) msgId);
             final String shardId = MessageIdUtil.shardIdOfMessageId((String) msgId);
             LOG.info(this + " Processing failed: " + shardId + ", seqNum " + seqNum);
             stateManager.fail(shardId, seqNum);

@@ -103,7 +103,7 @@ class KinesisHelper implements IShardListGetter {
     }
 
     private DescribeStreamResult getDescribeStreamResult(final DescribeStreamRequest request) {
-        return new InfiniteConstantBackoffRetry<DescribeStreamResult>(BACKOFF_MILLIS, AmazonClientException.class,
+        return new InfiniteConstantBackoffRetry<>(BACKOFF_MILLIS, AmazonClientException.class,
                 new Callable<DescribeStreamResult>() {
                     public DescribeStreamResult call() throws Exception {
                         DescribeStreamResult result = getSharedkinesisClient().describeStream(request);
@@ -143,10 +143,10 @@ class KinesisHelper implements IShardListGetter {
             kinesisClientConfig =
                     (ClientConfiguration) SerializationHelper.kryoDeserializeObject(serializedkinesisClientConfig);
         }
-        String userAgent = kinesisClientConfig.getUserAgent();
+        String userAgent = kinesisClientConfig.getUserAgentPrefix();
         if (!userAgent.contains(KINESIS_STORM_SPOUT_USER_AGENT)) {
             userAgent += ", " + KINESIS_STORM_SPOUT_USER_AGENT;
-            kinesisClientConfig.setUserAgent(userAgent);
+            kinesisClientConfig.setUserAgentPrefix(userAgent);
         }
         return kinesisClientConfig;
     }
