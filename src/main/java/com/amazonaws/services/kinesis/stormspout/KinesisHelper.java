@@ -15,8 +15,8 @@
 
 package com.amazonaws.services.kinesis.stormspout;
 
-import com.amazonaws.AmazonClientException;
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Region;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
@@ -103,7 +103,7 @@ class KinesisHelper implements IShardListGetter {
     }
 
     private DescribeStreamResult getDescribeStreamResult(final DescribeStreamRequest request) {
-        return new InfiniteConstantBackoffRetry<>(BACKOFF_MILLIS, AmazonClientException.class,
+        return new InfiniteConstantBackoffRetry<>(BACKOFF_MILLIS, SdkClientException.class,
                 new Callable<DescribeStreamResult>() {
                     public DescribeStreamResult call() throws Exception {
                         DescribeStreamResult result = getSharedkinesisClient().describeStream(request);

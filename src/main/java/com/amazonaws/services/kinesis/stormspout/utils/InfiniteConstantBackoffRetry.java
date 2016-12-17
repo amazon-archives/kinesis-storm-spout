@@ -15,10 +15,10 @@
 
 package com.amazonaws.services.kinesis.stormspout.utils;
 
-import java.util.concurrent.Callable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.Callable;
 
 /**
  * Does an infinite constant time backoff against an exception.
@@ -32,14 +32,16 @@ public class InfiniteConstantBackoffRetry<T> implements Callable<T> {
     private final Class<? extends Exception> retryOn;
     private final Callable<T> f;
 
-    /** Constructor.
+    /**
+     * Constructor.
+     *
      * @param backoffMillis Backoff time
-     * @param retryOn Exception we should retry on.
-     * @param f Callable (function) we should call/retry
+     * @param retryOn       Exception we should retry on.
+     * @param f             Callable (function) we should call/retry
      */
     public InfiniteConstantBackoffRetry(final long backoffMillis,
-            final Class<? extends Exception> retryOn,
-            final Callable<T> f) {
+                                        final Class<? extends Exception> retryOn,
+                                        final Callable<T> f) {
         this.backoffMillis = backoffMillis;
         this.retryOn = retryOn;
         this.f = f;
@@ -62,8 +64,12 @@ public class InfiniteConstantBackoffRetry<T> implements Callable<T> {
                 return f.call();
             } catch (Exception e) {
                 if (retryOn.isAssignableFrom(e.getClass())) {
-                    LOG.debug("Caught exception of type " + retryOn.getName() + ", backing off for " + backoffMillis
-                            + " ms.");
+                    LOG.error("Caught exception of type {}, backing off for {} ms.",
+                            retryOn.getName(),
+                            backoffMillis
+                    );
+                    // print stack trace for more information
+                    e.printStackTrace();
                     Thread.sleep(backoffMillis);
                 } else {
                     throw e;

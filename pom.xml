@@ -32,29 +32,16 @@
         <guava.version>20.0</guava.version>
         <commons-lang3.version>3.5</commons-lang3.version>
         <kryo.version>3.0.3</kryo.version>
-        <jackson.version>2.8.5</jackson.version>
         <slf4j.version>1.7.21</slf4j.version>
 
         <!-- Test Dependencies -->
         <junit.version>4.12</junit.version>
         <mockito.core.version>2.2.22</mockito.core.version>
     </properties>
-
-
     <dependencies>
         <dependency>
             <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-kinesis</artifactId>
-            <version>${aws-java-sdk.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-core</artifactId>
-            <version>${aws-java-sdk.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-sts</artifactId>
+            <artifactId>aws-java-sdk</artifactId>
             <version>${aws-java-sdk.version}</version>
         </dependency>
         <dependency>
@@ -114,16 +101,6 @@
             <groupId>com.esotericsoftware</groupId>
             <artifactId>kryo</artifactId>
             <version>${kryo.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-cbor</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
