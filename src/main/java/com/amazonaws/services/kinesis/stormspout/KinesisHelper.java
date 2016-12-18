@@ -24,6 +24,7 @@ import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.kinesis.model.DescribeStreamResult;
 import com.amazonaws.services.kinesis.model.Shard;
 import com.amazonaws.services.kinesis.stormspout.utils.InfiniteConstantBackoffRetry;
+import com.amazonaws.services.kinesis.stormspout.utils.ProjectInformation;
 import com.amazonaws.services.kinesis.stormspout.utils.ShardIdComparator;
 import com.google.common.collect.ImmutableSortedMap;
 import org.slf4j.Logger;
@@ -42,7 +43,8 @@ class KinesisHelper implements IShardListGetter {
     private static final Logger LOG = LoggerFactory.getLogger(KinesisHelper.class);
     private static final ShardIdComparator SHARD_ID_COMPARATOR = new ShardIdComparator();
     private static final Integer DESCRIBE_STREAM_LIMIT = 1000;
-    private static final String KINESIS_STORM_SPOUT_USER_AGENT = "kinesis-storm-spout-java-1.1.1";
+    private static final String KINESIS_STORM_SPOUT_USER_AGENT = ProjectInformation.getArtifactId() +
+            "-java-" + ProjectInformation.getVersion();
     private static final long BACKOFF_MILLIS = 1000L;
 
     private final byte[] serializedKinesisCredsProvider;
