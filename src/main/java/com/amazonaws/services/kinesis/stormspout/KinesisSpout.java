@@ -20,9 +20,12 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.state.zookeeper.ZookeeperStateManager;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Ints;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.storm.Config;
+import org.apache.storm.metric.api.AssignableMetric;
+import org.apache.storm.metric.api.CountMetric;
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.IRichSpout;
@@ -57,6 +60,8 @@ public class KinesisSpout implements IRichSpout, Serializable {
     private transient TopologyContext context;
     private transient ZookeeperStateManager stateManager;
     private transient long lastCommitTime;
+    private transient AssignableMetric millisBehindLastMetric;
+    private transient CountMetric retryCount;
 
     /**
      * Constructs an instance of the spout with just enough data to bootstrap the state from.
@@ -94,8 +99,30 @@ public class KinesisSpout implements IRichSpout, Serializable {
         this.collector = spoutCollector;
         this.stateManager = new ZookeeperStateManager(config, shardListGetter, getterBuilder, initialPosition);
         MDC.put(TOPOLOGY_NAME_MDC_KEY, (String) conf.get(Config.TOPOLOGY_NAME));
+        openMetrics(conf);
         LOG.info(this + " open() called with topoConfig task index " + spoutContext.getThisTaskIndex()
                 + " for processing stream " + config.getStreamName());
+    }
+
+    private void openMetrics(final Map<?, ?> conf) {
+        final int bucketSize = getBucketSize(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS), 60);
+        if (config.isTraceMillisBehindLast()) {
+            this.millisBehindLastMetric = this.context.registerMetric("millis_behind_latest_assignable", new AssignableMetric(0), bucketSize);
+        }
+        if (config.isTraceRetryCount()) {
+            this.retryCount = this.context.registerMetric("retry_count", new CountMetric(), bucketSize);
+        }
+    }
+
+    private int getBucketSize(Object o, int defaultBucketSize) {
+        if (o instanceof Integer) {
+            return ((Integer) o).intValue();
+        } else if (o instanceof String) {
+            Integer b;
+            return ((b = Ints.tryParse((String) o)) == null) ? defaultBucketSize : b;
+        } else {
+            return defaultBucketSize;
+        }
     }
 
     @Override
@@ -150,6 +177,7 @@ public class KinesisSpout implements IRichSpout, Serializable {
             boolean isRetry = false;
 
             if (stateManager.shouldRetry(currentShardId)) {
+                safeMetricIncrement(retryCount);
                 rec = stateManager.recordToRetry(currentShardId);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("ShardId " + currentShardId + ": Re-emitting record with partition key " + rec.getPartitionKey() + ", sequence number "
@@ -158,7 +186,14 @@ public class KinesisSpout implements IRichSpout, Serializable {
                 isRetry = true;
             } else {
                 final Records records = getter.getNext(1);
+
+                if (records.getMillisBehindLatest() >= 0) {
+                    safeMetricAssign(millisBehindLastMetric, records.getMillisBehindLatest());
+                }
+
                 final ImmutableList<Record> recordList = records.getRecords();
+
+
                 if ((recordList != null) && (!recordList.isEmpty())) {
                     rec = recordList.get(0);
                 }
@@ -195,6 +230,21 @@ public class KinesisSpout implements IRichSpout, Serializable {
                 LOG.debug(this + " Not committing to ZooKeeper.");
             }
         }
+    }
+
+    /**
+     * @param cm
+     */
+    private void safeMetricIncrement(CountMetric cm) {
+        if (cm != null) cm.incr();
+    }
+
+    /**
+     * @param am
+     * @param value
+     */
+    private void safeMetricAssign(AssignableMetric am, Object value) {
+        if (am != null) am.setValue(value);
     }
 
     /**

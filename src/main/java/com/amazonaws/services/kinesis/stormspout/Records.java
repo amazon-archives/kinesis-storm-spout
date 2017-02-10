@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableList;
  */
 class Records {
     private final ImmutableList<Record> records;
+    private final long millisBehindLatest;
     private final boolean endOfShard;
     private final boolean reshard;
 
@@ -33,8 +34,9 @@ class Records {
      * @param records    Kinesis records
      * @param endOfShard Did we reach the end of the shard?
      */
-    Records(final ImmutableList<Record> records, final boolean endOfShard, final boolean reshard) {
+    Records(final ImmutableList<Record> records, final long millisBehindLatest, final boolean endOfShard, final boolean reshard) {
         this.records = records;
+        this.millisBehindLatest = millisBehindLatest;
         this.endOfShard = endOfShard;
         this.reshard = reshard;
     }
@@ -51,7 +53,7 @@ class Records {
      * @return a new empty set of records for an open or closed shard.
      */
     static Records empty(final boolean closed) {
-        return new Records(ImmutableList.<Record>of(), closed, false);
+        return new Records(ImmutableList.<Record>of(), -1L, closed, false);
     }
 
     /**
@@ -82,5 +84,13 @@ class Records {
      */
     boolean isEmpty() {
         return records.isEmpty();
+    }
+
+    /**
+     * @return the number of milliseconds the set of records is from the tip of the stream
+     * Returns -1 if the set is empty
+     */
+    public long getMillisBehindLatest() {
+        return millisBehindLatest;
     }
 }

@@ -30,6 +30,7 @@ public class KinesisSpoutConfig implements Serializable {
     private int maxRecordsPerCall = 10000;
     private InitialPositionInStream initialPositionInStream = InitialPositionInStream.LATEST;
     private int checkpointIntervalMillis = 60000;
+
     // Backoff time between Kinesis GetRecords API calls (per shard) when a call returns an empty list of records.
     private long emptyRecordListBackoffMillis = 500L;
     private int recordRetryLimit = 3;
@@ -44,6 +45,9 @@ public class KinesisSpoutConfig implements Serializable {
     // Gets set by the spout later on.
     private String topologyName = "UNNAMED_TOPOLOGY";
 
+    private boolean traceRetryCount = false;
+    private boolean traceMillisBehindLast = false;
+
     public KinesisSpoutConfig(final String streamName, final String zookeeperConnectionString) {
         this.streamName = streamName;
         this.zookeeperConnectionString = zookeeperConnectionString;
@@ -51,24 +55,24 @@ public class KinesisSpoutConfig implements Serializable {
 
     /**
      * Constructor.
-     * 
-     * @param streamName Name of the Kinesis stream.
-     * @param maxRecordsPerCall Max number records to fetch from Kinesis in a single GetRecords call
-     * @param initialPositionInStream Fetch records from this position if a checkpoint doesn't exist
-     * @param zookeeperPrefix Prefix for Zookeeper paths when storing spout state.
-     * @param zookeeperConnectionString Endpoint for connecting to ZooKeeper (e.g. "localhost:2181").
+     *
+     * @param streamName                    Name of the Kinesis stream.
+     * @param maxRecordsPerCall             Max number records to fetch from Kinesis in a single GetRecords call
+     * @param initialPositionInStream       Fetch records from this position if a checkpoint doesn't exist
+     * @param zookeeperPrefix               Prefix for Zookeeper paths when storing spout state.
+     * @param zookeeperConnectionString     Endpoint for connecting to ZooKeeper (e.g. "localhost:2181").
      * @param zookeeperSessionTimeoutMillis Timeout for ZK session.
-     * @param checkpointIntervalMillis Save checkpoint to Zookeeper this often.
-     * @param scheme Used to convert a Kinesis record into a tuple
+     * @param checkpointIntervalMillis      Save checkpoint to Zookeeper this often.
+     * @param scheme                        Used to convert a Kinesis record into a tuple
      */
     public KinesisSpoutConfig(final String streamName,
-            final int maxRecordsPerCall,
-            final InitialPositionInStream initialPositionInStream,
-            final String zookeeperPrefix,
-            final String zookeeperConnectionString,
-            final int zookeeperSessionTimeoutMillis,
-            final int checkpointIntervalMillis,
-            final IKinesisRecordScheme scheme) {
+                              final int maxRecordsPerCall,
+                              final InitialPositionInStream initialPositionInStream,
+                              final String zookeeperPrefix,
+                              final String zookeeperConnectionString,
+                              final int zookeeperSessionTimeoutMillis,
+                              final int checkpointIntervalMillis,
+                              final IKinesisRecordScheme scheme) {
         this.scheme = scheme;
         this.streamName = streamName;
         checkValueIsPositive(maxRecordsPerCall, "maxRecordsPerCall");
@@ -93,7 +97,7 @@ public class KinesisSpoutConfig implements Serializable {
             throw new IllegalArgumentException("Value of " + argumentName + " must be >= 0, but was " + argument);
         }
     }
-    
+
     private void checkValueIsNotNull(Object object, String argumentName) {
         if (object == null) {
             throw new IllegalArgumentException(argumentName + " should not be null");
@@ -233,7 +237,7 @@ public class KinesisSpoutConfig implements Serializable {
     public int getRecordRetryLimit() {
         return recordRetryLimit;
     }
-    
+
     /**
      * @param recordRetryLimit Max retry attempts for a record (upon failure)
      * @return KinesisSpoutConfig
@@ -262,16 +266,43 @@ public class KinesisSpoutConfig implements Serializable {
     }
 
     public long getEmptyRecordListBackoffMillis() {
-        return emptyRecordListBackoffMillis ;
+        return emptyRecordListBackoffMillis;
     }
-    
+
     /**
      * @param emptyRecordListBackoffMillis Backoff for this time before making the next Kinesis GetRecords API call (per
-     *        shard) if the previous call returned no records.
+     *                                     shard) if the previous call returned no records.
      * @return KinesisSpoutConfig
      */
     public KinesisSpoutConfig withEmptyRecordListBackoffMillis(long emptyRecordListBackoffMillis) {
         this.emptyRecordListBackoffMillis = emptyRecordListBackoffMillis;
         return this;
+    }
+
+    /**
+     * @param traceRetryCount enable a metric to trace the number of tuples retried by the spout
+     * @return KinesisSpoutConfig
+     */
+    public KinesisSpoutConfig withTraceRetryCount(boolean traceRetryCount) {
+        this.traceRetryCount = traceRetryCount;
+        return this;
+    }
+
+    /**
+     * @param traceMillisBehindLast enable a metric to trace how far from the tip of the stream is the set of records
+     *                              currently processed by the spout
+     * @return KinesisSpoutConfig
+     */
+    public KinesisSpoutConfig withTraceMillisBehindLast(boolean traceMillisBehindLast) {
+        this.traceMillisBehindLast = traceMillisBehindLast;
+        return this;
+    }
+
+    public boolean isTraceMillisBehindLast() {
+        return traceMillisBehindLast;
+    }
+
+    public boolean isTraceRetryCount() {
+        return traceRetryCount;
     }
 }

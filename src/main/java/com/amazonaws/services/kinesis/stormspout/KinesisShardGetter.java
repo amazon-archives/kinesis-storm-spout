@@ -43,6 +43,7 @@ class KinesisShardGetter implements IShardGetter {
 
     private String shardIterator;
     private ShardPosition positionInShard;
+    private long millisBehindLatest;
 
     /**
      * @param streamName    Name of the Kinesis stream
@@ -55,6 +56,7 @@ class KinesisShardGetter implements IShardGetter {
         this.kinesisClient = kinesisClient;
         this.shardIterator = "";
         this.positionInShard = ShardPosition.end();
+        this.millisBehindLatest = 0l;
     }
 
     @Override
@@ -83,6 +85,8 @@ class KinesisShardGetter implements IShardGetter {
             }
 
             shardIterator = result.getNextShardIterator();
+            millisBehindLatest = result.getMillisBehindLatest();
+
         } catch (AmazonClientException e) {
             // We'll treat this equivalent to fetching 0 records - the spout drives the retry as part of nextTuple()
             // We don't sleep here - we can continue processing ack/fail on the spout thread.
@@ -91,7 +95,7 @@ class KinesisShardGetter implements IShardGetter {
 
         final boolean endOfShard = shardIterator == null;
         final boolean reshard = endOfShard && shard.getShardOpen();
-        return new Records(records.build(), endOfShard, reshard);
+        return new Records(records.build(), millisBehindLatest, endOfShard, reshard);
     }
 
     @Override
