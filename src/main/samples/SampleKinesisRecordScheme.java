@@ -16,7 +16,7 @@
 import java.util.ArrayList;
 import java.util.List;
 
-import backtype.storm.tuple.Fields;
+import org.apache.storm.tuple.Fields;
 
 import com.amazonaws.services.kinesis.model.Record;
 import com.amazonaws.services.kinesis.stormspout.IKinesisRecordScheme;
