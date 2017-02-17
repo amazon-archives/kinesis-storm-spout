@@ -1,2 +1,5 @@
-target/
-AwsCredentials.properties
+.idea
+*.iml
+*.project
+*.class
+target
