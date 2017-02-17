@@ -69,7 +69,7 @@ class KinesisHelper implements IShardListGetter {
         this.streamName = streamName;
         this.serializedKinesisCredsProvider = SerializationHelper.kryoSerializeObject(kinesisCredsProvider);
         this.serializedkinesisClientConfig = SerializationHelper.kryoSerializeObject(kinesisClientConfig);
-        this.serializedRegion = SerializationHelper.kryoSerializeObject(region);
+        this.serializedRegion = SerializationHelper.kryoSerializeObject(region.getName());
 
         this.kinesisCredsProvider = null;
         this.kinesisClientConfig = null;
@@ -155,7 +155,7 @@ class KinesisHelper implements IShardListGetter {
 
     private Region getRegion() {
         if (region == null) {
-            region = (Region) SerializationHelper.kryoDeserializeObject(serializedRegion);
+            region = Region.getRegion(Regions.fromName((String) SerializationHelper.kryoDeserializeObject(serializedRegion)));
         }
         return region;
     }
