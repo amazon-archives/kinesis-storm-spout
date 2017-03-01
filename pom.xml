@@ -27,7 +27,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <aws-java-sdk.version>1.11.67</aws-java-sdk.version>
-        <storm.version>1.0.2</storm.version>
+        <storm.version>1.0.3</storm.version>
         <curator-framework.version>2.11.1</curator-framework.version>
         <guava.version>20.0</guava.version>
         <commons-lang3.version>3.5</commons-lang3.version>
