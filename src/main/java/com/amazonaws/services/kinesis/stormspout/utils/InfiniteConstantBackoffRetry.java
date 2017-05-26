@@ -62,8 +62,8 @@ public class InfiniteConstantBackoffRetry<T> implements Callable<T> {
                 return f.call();
             } catch (Exception e) {
                 if (retryOn.isAssignableFrom(e.getClass())) {
-                    LOG.debug("Caught exception of type " + retryOn.getName() + ", backing off for " + backoffMillis
-                            + " ms.");
+                    LOG.debug("Caught exception of type " + retryOn.getName() + ", backing off for " + backoffMillis + " ms.");
+                    LOG.trace("Caught exception", e);
                     Thread.sleep(backoffMillis);
                 } else {
                     throw e;
