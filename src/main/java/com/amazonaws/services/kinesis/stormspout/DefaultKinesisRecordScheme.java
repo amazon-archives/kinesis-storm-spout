@@ -32,6 +32,10 @@ public class DefaultKinesisRecordScheme implements IKinesisRecordScheme {
      */
     public static final String FIELD_PARTITION_KEY = "partitionKey";
     /**
+     * Name of the (shard id) value in the tuple.
+     */
+    public static final String FIELD_SHARD_ID = "shardId";
+    /**
      * Name of the (Kinesis record) value in the tuple.
      */
     public static final String FIELD_RECORD = "record";
@@ -50,9 +54,10 @@ public class DefaultKinesisRecordScheme implements IKinesisRecordScheme {
      * .Record)
      */
     @Override
-    public List<Object> deserialize(Record record) {
+    public List<Object> deserialize(Record record, String shardId) {
         final List<Object> l = new ArrayList<>();
         l.add(record.getPartitionKey());
+        l.add(shardId);
         l.add(record);
         return l;
     }
@@ -64,6 +69,6 @@ public class DefaultKinesisRecordScheme implements IKinesisRecordScheme {
      */
     @Override
     public Fields getOutputFields() {
-        return new Fields(FIELD_PARTITION_KEY, FIELD_RECORD);
+        return new Fields(FIELD_PARTITION_KEY, FIELD_SHARD_ID, FIELD_RECORD);
     }
 }

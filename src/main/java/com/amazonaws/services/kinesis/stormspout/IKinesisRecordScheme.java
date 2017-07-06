@@ -30,7 +30,7 @@ public interface IKinesisRecordScheme extends java.io.Serializable {
      * @param record Kinesis record
      * @return List of values (to be emitted as a tuple)
      */
-    List<Object> deserialize(Record record);
+    List<Object> deserialize(Record record, String shardId);
 
     /**
      * @return output fields
